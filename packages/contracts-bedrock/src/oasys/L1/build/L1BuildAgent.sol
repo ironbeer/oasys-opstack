@@ -62,7 +62,7 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
     string public constant version = "2.0.0";
 
     /// @notice The map of chainId => builder
-    mapping(uint256 => address) public builders;
+    mapping(uint256 => address) private builders;
 
     /// @notice The map of chainId => BuiltAddressList
     mapping(uint256 => BuiltAddressList) public builtLists;
@@ -74,7 +74,7 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
     uint256[] public chainIds;
 
     /// @notice The flag to pause the L1CrossDomainMessenger
-    bool public messengerPaused;
+    mapping(uint256 => bool) public messengerPauseds;
 
     constructor(
         IBuildProxy _bProxy,
@@ -109,10 +109,11 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
     ///         Ref: step2 of `SystemDictator`
     ///         https://github.com/oasysgames/oasys-opstack/blob/cd7c58349542f9f1ce9fd42c9054aeed1325e02c/packages/contracts-bedrock/contracts/deployment/SystemDictator.sol
     /// @param addressManager The address manager of the existing L2
-    function pauseLegacyL1CrossDomainMessenger(address addressManager) public {
-        require(!messengerPaused, "L1BuildAgent: already paused");
+    function pauseLegacyL1CrossDomainMessenger(uint256 _chainId, address addressManager) public {
+        require(getBuilderGlobally(_chainId) == msg.sender, "L1BuildAgent: inconsistent builder");
+        require(!messengerPauseds[_chainId], "L1BuildAgent: already paused");
 
-        messengerPaused = true;
+        messengerPauseds[_chainId] = true;
 
         // Temporarily brick the L1CrossDomainMessenger by setting its implementation address to
         // address(0) which will cause the ResolvedDelegateProxy to revert. Better than pausing
@@ -132,10 +133,11 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
     /// @notice Unpause the legacy L1CrossDomainMessenger
     /// @param addressManager The address manager of the existing L2
     /// @param oldL1CrossDomainMessenger The address of the old L1CrossDomainMessenger
-    function unpauseLegacyL1CrossDomainMessenger(address addressManager, address oldL1CrossDomainMessenger) public {
-        require(messengerPaused, "L1BuildAgent: not paused");
+    function unpauseLegacyL1CrossDomainMessenger(uint256 _chainId, address addressManager, address oldL1CrossDomainMessenger) public {
+        require(getBuilderGlobally(_chainId) == msg.sender, "L1BuildAgent: inconsistent builder");
+        require(messengerPauseds[_chainId], "L1BuildAgent: not paused");
 
-        messengerPaused = false;
+        messengerPauseds[_chainId] = false;
 
         // Reset the L1CrossDomainMessenger to the old implementation.
         AddressManager(addressManager).setAddress(
@@ -157,7 +159,6 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
         external
         returns (BuiltAddressList memory, address[7] memory)
     {
-
         // Only the builder can build the L2
         // The builder is the person who deposits the required amount
         address builder = msg.sender;
@@ -180,36 +181,37 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
         builders[_chainId] = builder;
 
         // check if the L2 is upgrading the existing L2
-        // If so, the existing address manager is set to the legacyAddressManager
-        // otherwise, legacyAddressManager is empty
-        bool isUpgradingExistingL2 = _cfg.legacyAddressManager != address(0);
+        (bool isUpgrading, address addressManager) = isUpgradingExistingL2(_chainId);
 
         // temporarily set the admin to this contract
         // transfer ownership to the final system owner at the end of building
         address admin = address(this);
 
         // deploy proxy contracts for each verse
-        ProxyAdmin proxyAdmin = _deployProxies(_chainId, admin, _cfg.legacyAddressManager);
+        ProxyAdmin proxyAdmin = _deployProxies(_chainId, admin, addressManager);
 
-        if (isUpgradingExistingL2) {
-            if (!messengerPaused) {
+        if (isUpgrading) {
+            // Verify the builder is consistent with chain id;
+            require(getBuilderGlobally(_chainId) == builder, "L1BuildAgent: inconsistent builder");
+
+            if (!messengerPauseds[_chainId]) {
                 // Pause the legacy L1CrossDomainMessenger
-                pauseLegacyL1CrossDomainMessenger(_cfg.legacyAddressManager);
+                pauseLegacyL1CrossDomainMessenger(_chainId, addressManager);
             }
             // Remove deprecated addresses from the AddressManager
-            _removeDeprecatedAddresses(_cfg.legacyAddressManager);
+            _removeDeprecatedAddresses(addressManager);
             // Set the address of the AddressManager.
-            proxyAdmin.setAddressManager(AddressManager(_cfg.legacyAddressManager));
-            require(proxyAdmin.addressManager() == AddressManager(_cfg.legacyAddressManager));
+            proxyAdmin.setAddressManager(AddressManager(addressManager));
+            require(proxyAdmin.addressManager() == AddressManager(addressManager));
             // transfer ownership of the address manager to the ProxyAdmin
-            AddressManager(_cfg.legacyAddressManager).transferOwnership(address(proxyAdmin));
+            AddressManager(addressManager).transferOwnership(address(proxyAdmin));
         }
 
         // don't deploy the implementation contracts every time
         // to save gas, reuse the same implementation contract for each proxy
         address[7] memory impls = _deployImplementations(_chainId, _cfg);
 
-        emit Deployed(_chainId, _cfg.finalSystemOwner, _cfg.legacyAddressManager, builtLists[_chainId], impls);
+        emit Deployed(_chainId, _cfg.finalSystemOwner, builtLists[_chainId], impls);
 
         // append the chainId to the list
         chainIds.push(_chainId);
@@ -219,9 +221,9 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
         // OasysPortal should be initialized before L1StandardBridge,
         // because L1StandardBridge uses OasysPortal as a recipient of the ETH
         _initializeOasysPortal(_chainId, proxyAdmin, impls[0]);
-        _initializeL1StandardBridge(_chainId, proxyAdmin, impls[4], isUpgradingExistingL2);
-        _initializeL1ERC721Bridge(_chainId, proxyAdmin, impls[5], isUpgradingExistingL2);
-        _initializeL1CrossDomainMessenger(_chainId, proxyAdmin, impls[3], isUpgradingExistingL2);
+        _initializeL1StandardBridge(_chainId, proxyAdmin, impls[4], isUpgrading);
+        _initializeL1ERC721Bridge(_chainId, proxyAdmin, impls[5], isUpgrading);
+        _initializeL1CrossDomainMessenger(_chainId, proxyAdmin, impls[3], isUpgrading);
         _initializeOasysL2OutputOracle(_chainId, _cfg, proxyAdmin, impls[1]);
         _initializeProtocolVersions(_chainId, _cfg, proxyAdmin, impls[6]);
 
@@ -229,6 +231,34 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
         _transferProxyAdminOwnership(_cfg, proxyAdmin);
 
         return (builtLists[_chainId], impls);
+    }
+
+    /// @notice Return builder address corresponding to the chainId. traverse the legacy build agent
+    /// @param _chainId The chainId of Verse
+    function getBuilderGlobally(uint256 _chainId) public view returns (address builder) {
+        if (LEGACY_L1_BUILD_AGENT != ILegacyL1BuildAgent(address(0))) {
+            uint256 howMany = 255; // type(uint256).max; -> this leads memory allocation error
+            (address[] memory _builders, uint256[] memory _chainIds,) = LEGACY_L1_BUILD_AGENT.getBuilts(0, howMany);
+            for (uint256 i = 0; i < _chainIds.length; i++) {
+                if (_chainIds[i] == _chainId) {
+                    return _builders[i];
+                }
+            }
+        }
+        return getBuilderInternally(_chainId);
+    }
+
+    /// @notice Return builder address corresponding to the chainId within this contract
+    /// @param _chainId The chainId of Verse
+    function getBuilderInternally(uint256 _chainId) public view returns (address) {
+        return builders[_chainId];
+    }
+
+    /// @notice Check if the L2 is upgrading the existing L2
+    /// @param _chainId The chainId of Verse
+    function isUpgradingExistingL2(uint256 _chainId) public view returns(bool, address) {
+        address addressManager = LEGACY_L1_BUILD_AGENT.getAddressManager(_chainId);
+        return (addressManager != address(0), addressManager);
     }
 
     /// @notice Compute inbox address from chainId
@@ -442,11 +472,11 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
         uint256 _chainId,
         ProxyAdmin proxyAdmin,
         address impl,
-        bool isUpgradingExistingL2
+        bool isUpgrading
     ) internal {
         address l1StandardBridgeProxy = builtLists[_chainId].l1StandardBridge;
 
-        if (isUpgradingExistingL2) {
+        if (isUpgrading) {
             // The proxy of Legacy L2 is L1ChugSplashProxy, so need to set type
             proxyAdmin.setProxyType(l1StandardBridgeProxy, ProxyAdmin.ProxyType.CHUGSPLASH);
             require(uint256(proxyAdmin.proxyType(l1StandardBridgeProxy)) == uint256(ProxyAdmin.ProxyType.CHUGSPLASH));
@@ -468,11 +498,11 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
         uint256 _chainId,
         ProxyAdmin proxyAdmin,
         address impl,
-        bool isUpgradingExistingL2
+        bool isUpgrading
     ) internal {
         address l1ERC721BridgeProxy = builtLists[_chainId].l1ERC721Bridge;
 
-        if (isUpgradingExistingL2) {
+        if (isUpgrading) {
             // The proxy of Legacy L2 is L1ChugSplashProxy, so need to set type
             proxyAdmin.setProxyType(l1ERC721BridgeProxy, ProxyAdmin.ProxyType.CHUGSPLASH);
             require(uint256(proxyAdmin.proxyType(l1ERC721BridgeProxy)) == uint256(ProxyAdmin.ProxyType.CHUGSPLASH));
@@ -486,26 +516,25 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
         uint256 _chainId,
         ProxyAdmin proxyAdmin,
         address impl,
-        bool isUpgradingExistingL2
+        bool isUpgrading
     )
         internal
     {
         address l1CrossDomainMessengerProxy = builtLists[_chainId].l1CrossDomainMessenger;
 
-        if (isUpgradingExistingL2) {
+        if (isUpgrading) {
             // The proxy of Legacy L2 is ResolvedDelegateProxy, so need to set type and implementation name
             // Set proxy type to RESOLVED
             proxyAdmin.setProxyType(l1CrossDomainMessengerProxy, ProxyAdmin.ProxyType.RESOLVED);
             require(uint256(proxyAdmin.proxyType(l1CrossDomainMessengerProxy)) == uint256(ProxyAdmin.ProxyType.RESOLVED));
+            // Set the implementation name to OVM_L1CrossDomainMessenger
+            string memory contractName = "OVM_L1CrossDomainMessenger";
+            proxyAdmin.setImplementationName(l1CrossDomainMessengerProxy, contractName);
+            require(
+                keccak256(bytes(proxyAdmin.implementationName(l1CrossDomainMessengerProxy)))
+                    == keccak256(bytes(contractName))
+            );
         }
-
-        // Set the implementation name to OVM_L1CrossDomainMessenger
-        string memory contractName = "OVM_L1CrossDomainMessenger";
-        proxyAdmin.setImplementationName(l1CrossDomainMessengerProxy, contractName);
-        require(
-            keccak256(bytes(proxyAdmin.implementationName(l1CrossDomainMessengerProxy)))
-                == keccak256(bytes(contractName))
-        );
 
         proxyAdmin.upgradeAndCall({
             _proxy: payable(l1CrossDomainMessengerProxy),

@@ -3,17 +3,18 @@ pragma solidity 0.8.15;
 
 import { L2OutputOracle } from "src/L1/L2OutputOracle.sol";
 
-/// @title OasysL1ERC721BridgeLegacySpacer
-/// @notice The LegacyOasysStorageLayout_L1ERC721Bridge is a contract that defines the storage layout of Oasys Legacy L1ERC721Bridge.
+/// @title OasysERC721BridgeLegacySpacer
+/// @notice Defines the storage layout of Oasys Legacy ERC721Bridge.
 ///         Ref: https://github.com/oasysgames/oasys-optimism/blob/4d667a169296f37422ffaa4901e8d149e84abe5a/packages/contracts/contracts/oasys/L1/messaging/L1ERC721BridgeV2.sol
-contract OasysL1ERC721BridgeLegacySpacer {
+///         Ref: https://github.com/oasysgames/oasys-optimism/blob/4d667a169296f37422ffaa4901e8d149e84abe5a/packages/contracts/contracts/oasys/L2/messaging/L2ERC721Bridge.sol
+contract OasysERC721BridgeLegacySpacer {
     /// @custom:legacy
     /// @custom:spacer messenger
     /// @notice Spacer for backwards compatibility.
     address private spacer_0_0_20;
 
     /// @custom:legacy
-    /// @custom:spacer l2ERC721Bridge
+    /// @custom:spacer l1ERC721Bridge,l2ERC721Bridge
     /// @notice Spacer for backwards compatibility.
     address private spacer_1_0_20;
 

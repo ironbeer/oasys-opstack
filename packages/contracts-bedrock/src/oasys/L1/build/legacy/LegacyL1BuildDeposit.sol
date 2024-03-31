@@ -198,7 +198,7 @@ contract LegacyL1BuildDeposit {
      * @param _builder Address of the Verse-Builder.
      * @return block Block number.
      */
-    function getBuildBlock(address _builder) external view returns (uint256) {
+    function getBuildBlock(address _builder) public view returns (uint256) {
         return _buildBlock[_builder];
     }
 

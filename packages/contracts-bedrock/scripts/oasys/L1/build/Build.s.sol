@@ -302,7 +302,6 @@ contract Build is Script {
 
         // construct a build configuration.
         buildCfg = IL1BuildAgent.BuildConfig({
-            legacyAddressManager: address(0),
             finalSystemOwner: deployCfg.finalSystemOwner,
             l2OutputOracleProposer: deployCfg.l2OutputOracleProposer,
             l2OutputOracleChallenger: deployCfg.l2OutputOracleChallenger,

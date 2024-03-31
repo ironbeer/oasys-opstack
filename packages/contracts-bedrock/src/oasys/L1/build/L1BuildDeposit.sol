@@ -34,4 +34,25 @@ contract L1BuildDeposit is ISemver, LegacyL1BuildDeposit {
     function getDepositTotalIncludeLegacy(address _builder) public view returns (uint256) {
         return getDepositTotal(_builder) + legacyL1BuildDeposit.getDepositTotal(_builder);
     }
+
+
+    /**
+     * Returns the whether the address is the builder globally.
+     * @param _builder Address of the Verse-Builder.
+     */
+    function isBuilderGlobally(address _builder) public view returns(bool) {
+        bool builtLegacy;
+        if (legacyL1BuildDeposit != IL1BuildDeposit(address(0))) {
+            builtLegacy = legacyL1BuildDeposit.getBuildBlock(_builder) > 0;
+        }
+        return builtLegacy || isBuilderInternally(_builder);
+    }
+
+    /**
+     * Returns the whether the address is the internal builder.
+     * @param _builder Address of the Verse-Builder.
+     */
+    function isBuilderInternally(address _builder) public view returns(bool) {
+        return getBuildBlock(_builder) > 0;
+    }
 }

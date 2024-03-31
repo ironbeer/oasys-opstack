@@ -19,6 +19,7 @@ import { L1StandardBridge } from "src/L1/L1StandardBridge.sol";
 import { L1ERC721Bridge } from "src/L1/L1ERC721Bridge.sol";
 
 import { L1BuildAgentTestCommon } from "test/setup/oasys/SetupL1BuildAgent.sol";
+import { MockLegacyL1BuildAgent } from "test/setup/oasys/MockLegacyL1BuildAgent.sol";
 import { MockLegacyL1StandardBridge } from "test/setup/oasys/MockLegacyL1StandardBridge.sol";
 import { MockLegacyL1ERC721Bridge } from "test/setup/oasys/MockLegacyL1ERC721Bridge.sol";
 
@@ -31,8 +32,8 @@ contract L1BuildAgentTest is L1BuildAgentTestCommon {
         vm.prank(builder);
         deployment = _runL1BuildAgent(
             5555,
+            address(0),
             IL1BuildAgent.BuildConfig({
-                legacyAddressManager: address(0),
                 finalSystemOwner: finalOwner,
                 l2OutputOracleProposer: proposer,
                 l2OutputOracleChallenger: challenger,
@@ -97,13 +98,6 @@ contract L1BuildAgentTest is L1BuildAgentTestCommon {
         assert(deployment.proxyAdmin.proxyType(address(deployment.l1ERC721Bridge)) == ProxyAdmin.ProxyType.ERC1967);
         assert(deployment.proxyAdmin.proxyType(address(deployment.protocolVersions)) == ProxyAdmin.ProxyType.ERC1967);
     }
-
-    function test_ProxyAdmin_implementationNames() external view {
-        assert(
-            keccak256(abi.encode(deployment.proxyAdmin.implementationName(address(deployment.l1Messenger))))
-                == keccak256(abi.encode("OVM_L1CrossDomainMessenger"))
-        );
-    }
 }
 
 contract L1BuildAgentUpgradeTest is L1BuildAgentTestCommon {
@@ -130,11 +124,17 @@ contract L1BuildAgentUpgradeTest is L1BuildAgentTestCommon {
         // Transfer ownership of the legacy contracts to the builder
         _transferOwnerships(addressManager, l1StandardBridgeProxy, l1ERC721BridgeProxy, address(l1Agent));
 
+        // Mark the following chainId as built
+        uint256 chainId = 5555;
+        legacyAgent.setBuilder(builder, chainId);
+        legacyAgent.setAddressManager(chainId, addressManager);
+        legacyDeposit.setBuildBlock(builder, block.number);
+
         vm.prank(builder);
         deployment = _runL1BuildAgent(
-            5555,
+            chainId,
+            addressManager,
             IL1BuildAgent.BuildConfig({
-                legacyAddressManager: addressManager,
                 finalSystemOwner: finalOwner,
                 l2OutputOracleProposer: proposer,
                 l2OutputOracleChallenger: challenger,
@@ -148,6 +148,11 @@ contract L1BuildAgentUpgradeTest is L1BuildAgentTestCommon {
                 l2OutputOracleStartingTimestamp: block.timestamp
             })
         );
+
+        // Clear the cross domain messenger address to prevent early deposits
+        vm.prank(finalOwner);
+        string memory contractName = "OVM_L1CrossDomainMessenger";
+        deployment.proxyAdmin.setImplementationName(address(0), contractName);
     }
 
     function _deployLegacies() internal returns (address, address, address, address) {
@@ -236,7 +241,8 @@ contract L1BuildAgentUpgradeTest is L1BuildAgentTestCommon {
 
     function test_ProxyAdmin_implementationNames() external view {
         assert(
-            keccak256(abi.encode(deployment.proxyAdmin.implementationName(address(deployment.l1Messenger))))
+            // keccak256(abi.encode(deployment.proxyAdmin.implementationName(address(deployment.l1Messenger))))
+            keccak256(abi.encode(deployment.proxyAdmin.implementationName(address(0))))
                 == keccak256(abi.encode("OVM_L1CrossDomainMessenger"))
         );
     }

@@ -3,11 +3,6 @@ pragma solidity 0.8.15;
 
 interface IL1BuildAgent {
     struct BuildConfig {
-        // The address of `Lib_AddressManager`.
-        // Value:
-        //  - for new chain      : address(0)
-        //  - for existing chain : pre-deployed address
-        address legacyAddressManager;
         // The owner of L1 contract set. Any L1 contract that is ownable has this account set as its owner
         // Value: depending on each verse
         address finalSystemOwner;
@@ -69,7 +64,6 @@ interface IL1BuildAgent {
     event Deployed(
         uint256 indexed chainId,
         address finalSystemOwner,
-        address legacyAddressManager,
         BuiltAddressList results,
         address[7] impls
     );
@@ -81,9 +75,13 @@ interface IL1BuildAgent {
 
     function chainIds(uint256 index) external view returns (uint256 chainId);
 
+    function getBuilderGlobally(uint256 chainId) external view returns (address builder);
+
     function computeInboxAddress(uint256 chainId) external view returns (address batchInbox);
 
     function isUniqueChainId(uint256 chainId) external view returns (bool);
+
+    function isUpgradingExistingL2(uint256 _chainId) external returns(bool, address);
 
     function build(
         uint256 chainId,

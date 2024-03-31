@@ -33,6 +33,8 @@ import { Path } from "scripts/oasys/L1/build/_path.sol";
 import { Deploy } from "scripts/oasys/L1/build/Deploy.s.sol";
 
 import { BuiltInContracts } from "test/setup/oasys/BuiltInContracts.sol";
+import { MockLegacyL1BuildAgent } from "test/setup/oasys/MockLegacyL1BuildAgent.sol";
+import { MockLegacyL1BuildDeposit } from "test/setup/oasys/MockLegacyL1BuildDeposit.sol";
 
 contract SetupL1BuildAgent is Test {
     using stdJson for string;
@@ -40,6 +42,7 @@ contract SetupL1BuildAgent is Test {
     struct Deployment {
         // Build config
         uint256 chainId;
+        AddressManager addressManager;
         IL1BuildAgent.BuildConfig buildCfg;
         // Deployed proxies
         OasysPortal portal;
@@ -51,7 +54,6 @@ contract SetupL1BuildAgent is Test {
         ProtocolVersions protocolVersions;
         // Deployed implementations
         ProxyAdmin proxyAdmin;
-        AddressManager addressManager;
         OasysPortal portalImpl;
         OasysL2OutputOracle l2OracleImpl;
         SystemConfig systemConfigImpl;
@@ -88,6 +90,10 @@ contract SetupL1BuildAgent is Test {
     /// @dev Default deployment L2
     Deployment deployment;
 
+    /// Legacy contracts
+    MockLegacyL1BuildAgent legacyAgent;
+    MockLegacyL1BuildDeposit legacyDeposit;
+
     function setUp() public virtual {
         _addBalanceToTestWallets();
 
@@ -119,10 +125,13 @@ contract SetupL1BuildAgent is Test {
         internal
         returns (L1BuildAgent, L1BuildDeposit, OasysL2OutputOracleVerifier)
     {
+        legacyAgent = new MockLegacyL1BuildAgent();
+        legacyDeposit = new MockLegacyL1BuildDeposit();
+
         vm.setEnv("SALT", salt);
         vm.setEnv("PERMISSIONED_FACTORY", vm.toString(address(factory)));
-        vm.setEnv("LEGACY_AGENT", vm.toString(address(0)));
-        vm.setEnv("LEGACY_DEPOSIT", vm.toString(address(0)));
+        vm.setEnv("LEGACY_AGENT", vm.toString(address(legacyAgent)));
+        vm.setEnv("LEGACY_DEPOSIT", vm.toString(address(legacyDeposit)));
 
         string memory jsonPath = string.concat(Path.deployOutDir(), "/test.json");
 
@@ -149,6 +158,7 @@ contract SetupL1BuildAgent is Test {
     /// @dev Run `L1BuildAgent.build()` method.
     function _runL1BuildAgent(
         uint256 chainId,
+        address addressManager,
         IL1BuildAgent.BuildConfig memory cfg
     )
         internal
@@ -159,6 +169,7 @@ contract SetupL1BuildAgent is Test {
         return Deployment({
             // Build config
             chainId: chainId,
+            addressManager: AddressManager(addressManager),
             buildCfg: cfg,
             // Deployed proxies
             portal: OasysPortal(payable(results.oasysPortal)),
@@ -170,7 +181,6 @@ contract SetupL1BuildAgent is Test {
             protocolVersions: ProtocolVersions(results.protocolVersions),
             // Deployed implementations
             proxyAdmin: ProxyAdmin(results.proxyAdmin),
-            addressManager: AddressManager(cfg.legacyAddressManager),
             portalImpl: OasysPortal(payable(impls[0])),
             l2OracleImpl: OasysL2OutputOracle(impls[1]),
             systemConfigImpl: SystemConfig(impls[2]),
