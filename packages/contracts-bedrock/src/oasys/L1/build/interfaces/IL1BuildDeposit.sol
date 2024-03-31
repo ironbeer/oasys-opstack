@@ -14,5 +14,5 @@ interface IL1BuildDeposit {
 
     function getBuildBlock(address _builder) external view returns (uint256);
 
-    function isBuilderGlobally(address _builder) external view returns(bool);
+    function isBuilderGlobally(address _builder) external view returns (bool);
 }

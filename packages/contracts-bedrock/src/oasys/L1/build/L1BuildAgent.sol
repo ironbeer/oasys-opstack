@@ -103,7 +103,6 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
         L2OO_VERIFIER = _l2ooVerifier;
     }
 
-
     /// @notice Pause the legacy L1CrossDomainMessenger
     ///         This is used when upgrading the existing L2
     ///         Ref: step2 of `SystemDictator`
@@ -124,26 +123,26 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
         // CanonicalTransactionChain. We do this by setting an address in the AddressManager
         // because the DTL already has a reference to the AddressManager and this way we don't also
         // need to give it a reference to the SystemDictator.
-        AddressManager(addressManager).setAddress(
-            "DTL_SHUTOFF_BLOCK",
-            address(uint160(block.number))
-        );
+        AddressManager(addressManager).setAddress("DTL_SHUTOFF_BLOCK", address(uint160(block.number)));
     }
 
     /// @notice Unpause the legacy L1CrossDomainMessenger
     /// @param addressManager The address manager of the existing L2
     /// @param oldL1CrossDomainMessenger The address of the old L1CrossDomainMessenger
-    function unpauseLegacyL1CrossDomainMessenger(uint256 _chainId, address addressManager, address oldL1CrossDomainMessenger) public {
+    function unpauseLegacyL1CrossDomainMessenger(
+        uint256 _chainId,
+        address addressManager,
+        address oldL1CrossDomainMessenger
+    )
+        public
+    {
         require(getBuilderGlobally(_chainId) == msg.sender, "L1BuildAgent: inconsistent builder");
         require(messengerPauseds[_chainId], "L1BuildAgent: not paused");
 
         messengerPauseds[_chainId] = false;
 
         // Reset the L1CrossDomainMessenger to the old implementation.
-        AddressManager(addressManager).setAddress(
-            "OVM_L1CrossDomainMessenger",
-            oldL1CrossDomainMessenger
-        );
+        AddressManager(addressManager).setAddress("OVM_L1CrossDomainMessenger", oldL1CrossDomainMessenger);
 
         // Unset the DTL shutoff block which will allow the DTL to sync again.
         AddressManager(addressManager).setAddress("DTL_SHUTOFF_BLOCK", address(0));
@@ -256,7 +255,7 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
 
     /// @notice Check if the L2 is upgrading the existing L2
     /// @param _chainId The chainId of Verse
-    function isUpgradingExistingL2(uint256 _chainId) public view returns(bool, address) {
+    function isUpgradingExistingL2(uint256 _chainId) public view returns (bool, address) {
         address addressManager = LEGACY_L1_BUILD_AGENT.getAddressManager(_chainId);
         return (addressManager != address(0), addressManager);
     }
@@ -313,7 +312,8 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
         builtLists[_chainId].oasysPortal = _deployProxy(address(proxyAdmin));
         builtLists[_chainId].oasysL2OutputOracle = _deployProxy(address(proxyAdmin));
         builtLists[_chainId].systemConfig = _deployProxy(address(proxyAdmin));
-        builtLists[_chainId].l1CrossDomainMessenger = _deployL1CrossDomainMessengerProxy(address(proxyAdmin), addressManager);
+        builtLists[_chainId].l1CrossDomainMessenger =
+            _deployL1CrossDomainMessengerProxy(address(proxyAdmin), addressManager);
         builtLists[_chainId].l1StandardBridge = _deployL1StandardBridgeProxy(address(proxyAdmin), addressManager);
         builtLists[_chainId].l1ERC721Bridge = _deployL1ERC721BridgeProxy(address(proxyAdmin), addressManager);
         builtLists[_chainId].protocolVersions = _deployProxy(address(proxyAdmin));
@@ -329,7 +329,13 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
     }
 
     /// @notice Deploy the L1CrossDomainMessengerProxy using a ResolvedDelegateProxy
-    function _deployL1CrossDomainMessengerProxy(address proxyAdmin, address addressManager) internal returns (address addr) {
+    function _deployL1CrossDomainMessengerProxy(
+        address proxyAdmin,
+        address addressManager
+    )
+        internal
+        returns (address addr)
+    {
         if (addressManager != address(0)) {
             // upgrading existing L2
             // Don't deply proxy, as the existing L2 already has the proxy(RelolvedDelegateProxy)
@@ -382,7 +388,7 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
                 _l2Oracle: builtLists[_chainId].oasysL2OutputOracle,
                 _guardian: _cfg.finalSystemOwner,
                 _systemConfig: builtLists[_chainId].systemConfig
-             })
+            })
         );
 
         address _challenger = _cfg.l2OutputOracleChallenger;
@@ -473,7 +479,9 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
         ProxyAdmin proxyAdmin,
         address impl,
         bool isUpgrading
-    ) internal {
+    )
+        internal
+    {
         address l1StandardBridgeProxy = builtLists[_chainId].l1StandardBridge;
 
         if (isUpgrading) {
@@ -484,9 +492,7 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
             // Transfer ETH from the L1StandardBridge to the OptimismPortal.
             PortalSender portalSender = new PortalSender(OptimismPortal(payable(builtLists[_chainId].oasysPortal)));
             proxyAdmin.upgradeAndCall(
-                payable(l1StandardBridgeProxy),
-                address(portalSender),
-                abi.encodeCall(PortalSender.donate, ())
+                payable(l1StandardBridgeProxy), address(portalSender), abi.encodeCall(PortalSender.donate, ())
             );
         }
 
@@ -499,7 +505,9 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
         ProxyAdmin proxyAdmin,
         address impl,
         bool isUpgrading
-    ) internal {
+    )
+        internal
+    {
         address l1ERC721BridgeProxy = builtLists[_chainId].l1ERC721Bridge;
 
         if (isUpgrading) {
@@ -526,7 +534,9 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
             // The proxy of Legacy L2 is ResolvedDelegateProxy, so need to set type and implementation name
             // Set proxy type to RESOLVED
             proxyAdmin.setProxyType(l1CrossDomainMessengerProxy, ProxyAdmin.ProxyType.RESOLVED);
-            require(uint256(proxyAdmin.proxyType(l1CrossDomainMessengerProxy)) == uint256(ProxyAdmin.ProxyType.RESOLVED));
+            require(
+                uint256(proxyAdmin.proxyType(l1CrossDomainMessengerProxy)) == uint256(ProxyAdmin.ProxyType.RESOLVED)
+            );
             // Set the implementation name to OVM_L1CrossDomainMessenger
             string memory contractName = "OVM_L1CrossDomainMessenger";
             proxyAdmin.setImplementationName(l1CrossDomainMessengerProxy, contractName);

@@ -61,12 +61,7 @@ interface IL1BuildAgent {
     }
 
     /// @notice Event emitted when the L1 contract set is deployed
-    event Deployed(
-        uint256 indexed chainId,
-        address finalSystemOwner,
-        BuiltAddressList results,
-        address[7] impls
-    );
+    event Deployed(uint256 indexed chainId, address finalSystemOwner, BuiltAddressList results, address[7] impls);
 
     function builtLists(uint256 chainId)
         external
@@ -81,7 +76,7 @@ interface IL1BuildAgent {
 
     function isUniqueChainId(uint256 chainId) external view returns (bool);
 
-    function isUpgradingExistingL2(uint256 _chainId) external returns(bool, address);
+    function isUpgradingExistingL2(uint256 _chainId) external returns (bool, address);
 
     function build(
         uint256 chainId,

@@ -348,11 +348,7 @@ contract Build is Script {
         // output opstack configuration files.
         string memory deployCfgJson = _deployConfigJson("DeployConfig");
         string memory addressesJson = _addressesJson(
-            "deployed",
-            results.proxyAdmin,
-            results.oasysL2OutputOracle,
-            address(0),
-            results.protocolVersions
+            "deployed", results.proxyAdmin, results.oasysL2OutputOracle, address(0), results.protocolVersions
         );
 
         // output to the `./tmp/L1BuildAgent/Build/latest` directory

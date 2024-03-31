@@ -95,7 +95,8 @@ contract OasysL1ERC721Bridge is L1ERC721Bridge, ILegacyL1ERC721Bridge {
     {
         super.finalizeBridgeERC721(_localToken, _remoteToken, _from, _to, _tokenId, _extraData);
 
-        // Ref: https://github.com/oasysgames/oasys-optimism/blob/4d667a169296f37422ffaa4901e8d149e84abe5a/packages/contracts/contracts/oasys/L1/messaging/IL1ERC721Bridge.sol#L21-L28
+        // Ref:
+        // https://github.com/oasysgames/oasys-optimism/blob/4d667a169296f37422ffaa4901e8d149e84abe5a/packages/contracts/contracts/oasys/L1/messaging/IL1ERC721Bridge.sol#L21-L28
         // slither-disable-next-line reentrancy-events
         emit ERC721WithdrawalFinalized(_localToken, _remoteToken, _from, _to, _tokenId, _extraData);
     }
@@ -116,7 +117,8 @@ contract OasysL1ERC721Bridge is L1ERC721Bridge, ILegacyL1ERC721Bridge {
     {
         super._initiateBridgeERC721(_localToken, _remoteToken, _from, _to, _tokenId, _minGasLimit, _extraData);
 
-        // Ref: https://github.com/oasysgames/oasys-optimism/blob/4d667a169296f37422ffaa4901e8d149e84abe5a/packages/contracts/contracts/oasys/L1/messaging/IL1ERC721Bridge.sol#L12-L19
+        // Ref:
+        // https://github.com/oasysgames/oasys-optimism/blob/4d667a169296f37422ffaa4901e8d149e84abe5a/packages/contracts/contracts/oasys/L1/messaging/IL1ERC721Bridge.sol#L12-L19
         // slither-disable-next-line reentrancy-events
         emit ERC721DepositInitiated(_localToken, _remoteToken, _from, _to, _tokenId, _extraData);
     }

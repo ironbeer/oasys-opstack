@@ -62,10 +62,7 @@ contract OasysL2OutputOracle is IOasysL2OutputOracle, L2OutputOracle {
             _startingTimestamp <= block.timestamp,
             "L2OutputOracle: starting L2 timestamp must be less than current time"
         );
-        require(
-            l2Outputs.length == 0,
-            "L2OutputOracle: cannot update starting block after outputs have been recorded"
-        );
+        require(l2Outputs.length == 0, "L2OutputOracle: cannot update starting block after outputs have been recorded");
 
         startingTimestamp = _startingTimestamp;
         startingBlockNumber = _startingBlockNumber;

@@ -8,7 +8,8 @@ import { OptimismPortal } from "src/L1/OptimismPortal.sol";
  * @notice The PortalSender is a simple intermediate contract that will transfer the balance of the
  *         L1StandardBridge to the OptimismPortal during the Bedrock migration.
  */
-// Copied from https://github.com/oasysgames/oasys-opstack/blob/cd7c58349542f9f1ce9fd42c9054aeed1325e02c/packages/contracts-bedrock/contracts/deployment/PortalSender.sol
+// Copied from
+// https://github.com/oasysgames/oasys-opstack/blob/cd7c58349542f9f1ce9fd42c9054aeed1325e02c/packages/contracts-bedrock/contracts/deployment/PortalSender.sol
 contract PortalSender {
     /**
      * @notice Address of the OptimismPortal contract.

@@ -5,8 +5,10 @@ import { L2OutputOracle } from "src/L1/L2OutputOracle.sol";
 
 /// @title OasysERC721BridgeLegacySpacer
 /// @notice Defines the storage layout of Oasys Legacy ERC721Bridge.
-///         Ref: https://github.com/oasysgames/oasys-optimism/blob/4d667a169296f37422ffaa4901e8d149e84abe5a/packages/contracts/contracts/oasys/L1/messaging/L1ERC721BridgeV2.sol
-///         Ref: https://github.com/oasysgames/oasys-optimism/blob/4d667a169296f37422ffaa4901e8d149e84abe5a/packages/contracts/contracts/oasys/L2/messaging/L2ERC721Bridge.sol
+///         Ref:
+/// https://github.com/oasysgames/oasys-optimism/blob/4d667a169296f37422ffaa4901e8d149e84abe5a/packages/contracts/contracts/oasys/L1/messaging/L1ERC721BridgeV2.sol
+///         Ref:
+/// https://github.com/oasysgames/oasys-optimism/blob/4d667a169296f37422ffaa4901e8d149e84abe5a/packages/contracts/contracts/oasys/L2/messaging/L2ERC721Bridge.sol
 contract OasysERC721BridgeLegacySpacer {
     /// @custom:legacy
     /// @custom:spacer messenger

@@ -22,14 +22,16 @@ contract OasysL2ERC721Bridge is L2ERC721Bridge, ILegacyL2ERC721Bridge {
 
     /// @custom:legacy
     /// @inheritdoc ILegacyL2ERC721Bridge
-    /// @dev Ref: https://github.com/oasysgames/oasys-optimism/blob/4d667a169296f37422ffaa4901e8d149e84abe5a/packages/contracts/contracts/oasys/L2/messaging/L2ERC721Bridge.sol#L30
+    /// @dev Ref:
+    /// https://github.com/oasysgames/oasys-optimism/blob/4d667a169296f37422ffaa4901e8d149e84abe5a/packages/contracts/contracts/oasys/L2/messaging/L2ERC721Bridge.sol#L30
     function l1ERC721Bridge() external view returns (address) {
         return OTHER_BRIDGE;
     }
 
     /// @custom:legacy
     /// @inheritdoc ILegacyL2ERC721Bridge
-    /// @dev Ref: https://github.com/oasysgames/oasys-optimism/blob/4d667a169296f37422ffaa4901e8d149e84abe5a/packages/contracts/contracts/oasys/L2/messaging/L2ERC721Bridge.sol#L53-L58
+    /// @dev Ref:
+    /// https://github.com/oasysgames/oasys-optimism/blob/4d667a169296f37422ffaa4901e8d149e84abe5a/packages/contracts/contracts/oasys/L2/messaging/L2ERC721Bridge.sol#L53-L58
     function withdraw(address _l2Token, uint256 _tokenId, uint32 _l1Gas, bytes calldata _data) external {
         // Copied from ERC721Bridge.bridgeERC721
         // start ----------------------------
@@ -47,7 +49,8 @@ contract OasysL2ERC721Bridge is L2ERC721Bridge, ILegacyL2ERC721Bridge {
 
     /// @custom:legacy
     /// @inheritdoc ILegacyL2ERC721Bridge
-    /// @dev Ref: https://github.com/oasysgames/oasys-optimism/blob/4d667a169296f37422ffaa4901e8d149e84abe5a/packages/contracts/contracts/oasys/L2/messaging/L2ERC721Bridge.sol#L65-L71
+    /// @dev Ref:
+    /// https://github.com/oasysgames/oasys-optimism/blob/4d667a169296f37422ffaa4901e8d149e84abe5a/packages/contracts/contracts/oasys/L2/messaging/L2ERC721Bridge.sol#L65-L71
     function withdrawTo(
         address _l2Token,
         address _to,
@@ -67,7 +70,8 @@ contract OasysL2ERC721Bridge is L2ERC721Bridge, ILegacyL2ERC721Bridge {
 
     /// @custom:legacy
     /// @inheritdoc ILegacyL2ERC721Bridge
-    /// @dev Ref: https://github.com/oasysgames/oasys-optimism/blob/4d667a169296f37422ffaa4901e8d149e84abe5a/packages/contracts/contracts/oasys/L2/messaging/L2ERC721Bridge.sol#L130-L137
+    /// @dev Ref:
+    /// https://github.com/oasysgames/oasys-optimism/blob/4d667a169296f37422ffaa4901e8d149e84abe5a/packages/contracts/contracts/oasys/L2/messaging/L2ERC721Bridge.sol#L130-L137
     function finalizeDeposit(
         address _l1Token,
         address _l2Token,
@@ -146,11 +150,8 @@ contract OasysL2ERC721Bridge is L2ERC721Bridge, ILegacyL2ERC721Bridge {
             // Proceed with the original implementation if the local token is optimism mintable
             super._initiateBridgeERC721(_localToken, _remoteToken, _from, _to, _tokenId, _minGasLimit, _extraData);
         } else {
-
             // Following implementation is for legacy L2StandardERC721
             // Mostly copied from the original implementation
-
-
 
             require(_remoteToken != address(0), "L2ERC721Bridge: remote token cannot be address(0)");
 

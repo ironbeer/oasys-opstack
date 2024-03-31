@@ -207,31 +207,50 @@ contract L1BuildAgentTestCommon is SetupL1BuildAgent {
     }
 
     function test_ProxyAdmin_getProxyAdmin_SystemConfig_succeeds() external {
-        assertEq(deployment.proxyAdmin.getProxyAdmin(payable(address(deployment.systemConfig))), address(deployment.proxyAdmin));
+        assertEq(
+            deployment.proxyAdmin.getProxyAdmin(payable(address(deployment.systemConfig))),
+            address(deployment.proxyAdmin)
+        );
     }
 
     function test_ProxyAdmin_getProxyAdmin_OasysPortal_succeeds() external {
-        assertEq(deployment.proxyAdmin.getProxyAdmin(payable(address(deployment.portal))), address(deployment.proxyAdmin));
+        assertEq(
+            deployment.proxyAdmin.getProxyAdmin(payable(address(deployment.portal))), address(deployment.proxyAdmin)
+        );
     }
 
     function test_ProxyAdmin_getProxyAdmin_OasysL2OutputOracle_succeeds() external {
-        assertEq(deployment.proxyAdmin.getProxyAdmin(payable(address(deployment.l2Oracle))), address(deployment.proxyAdmin));
+        assertEq(
+            deployment.proxyAdmin.getProxyAdmin(payable(address(deployment.l2Oracle))), address(deployment.proxyAdmin)
+        );
     }
 
     function test_ProxyAdmin_getProxyAdmin_L1CrossDomainMessenger_succeeds() external {
-        assertEq(deployment.proxyAdmin.getProxyAdmin(payable(address(deployment.l1Messenger))), address(deployment.proxyAdmin));
+        assertEq(
+            deployment.proxyAdmin.getProxyAdmin(payable(address(deployment.l1Messenger))),
+            address(deployment.proxyAdmin)
+        );
     }
 
     function test_ProxyAdmin_getProxyAdmin_L1StandardBridge_succeeds() external {
-        assertEq(deployment.proxyAdmin.getProxyAdmin(payable(address(deployment.l1ERC20Bridge))), address(deployment.proxyAdmin));
+        assertEq(
+            deployment.proxyAdmin.getProxyAdmin(payable(address(deployment.l1ERC20Bridge))),
+            address(deployment.proxyAdmin)
+        );
     }
 
     function test_ProxyAdmin_getProxyAdmin_L1ERC721Bridge_succeeds() external {
-        assertEq(deployment.proxyAdmin.getProxyAdmin(payable(address(deployment.l1ERC721Bridge))), address(deployment.proxyAdmin));
+        assertEq(
+            deployment.proxyAdmin.getProxyAdmin(payable(address(deployment.l1ERC721Bridge))),
+            address(deployment.proxyAdmin)
+        );
     }
 
     function test_ProxyAdmin_getProxyAdmin_ProtocolVersions_succeeds() external {
-        assertEq(deployment.proxyAdmin.getProxyAdmin(payable(address(deployment.protocolVersions))), address(deployment.proxyAdmin));
+        assertEq(
+            deployment.proxyAdmin.getProxyAdmin(payable(address(deployment.protocolVersions))),
+            address(deployment.proxyAdmin)
+        );
     }
 
     /**
