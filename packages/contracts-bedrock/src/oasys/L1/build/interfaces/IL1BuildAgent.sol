@@ -19,6 +19,9 @@ interface IL1BuildAgent {
         // This address sign the block for p2p sync.
         // Value: depending on each verse
         address p2pSequencerAddress;
+        /// The address of messager relayer.
+        // Value: depending on each verse
+        address messageRelayer;
         // the block time of l2 chain
         // Value: 2s
         uint256 l2BlockTime;

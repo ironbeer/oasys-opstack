@@ -39,6 +39,7 @@ contract L1BuildAgentTest is L1BuildAgentTestCommon {
                 l2OutputOracleChallenger: challenger,
                 batchSenderAddress: batcher,
                 p2pSequencerAddress: p2pSequencer,
+                messageRelayer: relayer,
                 l2BlockTime: 5,
                 l2GasLimit: 50_000_000,
                 l2OutputOracleSubmissionInterval: 50,
@@ -58,6 +59,7 @@ contract L1BuildAgentTest is L1BuildAgentTestCommon {
         console.log("challenger   : %s", challenger);
         console.log("batcher      : %s", batcher);
         console.log("p2pSequencer : %s", p2pSequencer);
+        console.log("relayer      : %s", relayer);
 
         console.log("\nDependency contracts");
         console.log("PermissionedContractFactory : %s", address(permissionedFactory));
@@ -140,6 +142,7 @@ contract L1BuildAgentUpgradeTest is L1BuildAgentTestCommon {
                 l2OutputOracleChallenger: challenger,
                 batchSenderAddress: batcher,
                 p2pSequencerAddress: p2pSequencer,
+                messageRelayer: relayer,
                 l2BlockTime: 5,
                 l2GasLimit: 50_000_000,
                 l2OutputOracleSubmissionInterval: 50,

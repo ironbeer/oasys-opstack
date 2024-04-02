@@ -36,6 +36,12 @@ contract OasysPortal is OptimismPortal {
         super.initialize(_paused);
     }
 
+    /// @notice Initalize with setting messager relayer
+    function initializeWithRelayer(bool _paused, address _messageRelayer) public {
+        messageRelayer = _messageRelayer;
+        initialize(_paused);
+    }
+
     /// @notice Set a new message relayer address.
     ///         If the zero address is set, no immediate relay of withdrawal messages.
     function setMessageRelayer(address newRelayer) external {

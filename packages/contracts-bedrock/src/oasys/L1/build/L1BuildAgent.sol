@@ -219,7 +219,7 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
         _initializeSystemConfig(_chainId, _cfg, proxyAdmin, impls[2]);
         // OasysPortal should be initialized before L1StandardBridge,
         // because L1StandardBridge uses OasysPortal as a recipient of the ETH
-        _initializeOasysPortal(_chainId, proxyAdmin, impls[0]);
+        _initializeOasysPortal(_chainId, _cfg, proxyAdmin, impls[0]);
         _initializeL1StandardBridge(_chainId, proxyAdmin, impls[4], isUpgrading);
         _initializeL1ERC721Bridge(_chainId, proxyAdmin, impls[5], isUpgrading);
         _initializeL1CrossDomainMessenger(_chainId, proxyAdmin, impls[3], isUpgrading);
@@ -575,13 +575,13 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
     }
 
     /// @notice Initialize the OasysPortal
-    function _initializeOasysPortal(uint256 _chainId, ProxyAdmin proxyAdmin, address impl) internal {
+    function _initializeOasysPortal(uint256 _chainId, BuildConfig calldata _cfg, ProxyAdmin proxyAdmin, address impl) internal {
         address oasysPortalProxy = builtLists[_chainId].oasysPortal;
 
         proxyAdmin.upgradeAndCall({
             _proxy: payable(oasysPortalProxy),
             _implementation: impl,
-            _data: BUILD_OASYS_PORTAL.initializeData({ _paused: false })
+            _data: BUILD_OASYS_PORTAL.initializeData({ _paused: false, relayer: _cfg.messageRelayer })
         });
     }
 

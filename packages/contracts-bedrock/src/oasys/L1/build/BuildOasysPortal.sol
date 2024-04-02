@@ -34,7 +34,7 @@ contract BuildOasysPortal is IBuildOasysPortal, ISemver {
     }
 
     /// @inheritdoc IBuildOasysPortal
-    function initializeData(bool _paused) external pure returns (bytes memory) {
-        return abi.encodeCall(OasysPortal.initialize, (_paused));
+    function initializeData(bool _paused, address relayer) external pure returns (bytes memory) {
+        return abi.encodeCall(OasysPortal.initializeWithRelayer, (_paused, relayer));
     }
 }

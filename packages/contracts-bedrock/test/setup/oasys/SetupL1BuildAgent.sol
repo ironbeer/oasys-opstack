@@ -78,6 +78,7 @@ contract SetupL1BuildAgent is Test {
     address challenger = makeAddr("challenger");
     address batcher = makeAddr("batcher");
     address p2pSequencer = makeAddr("p2pSequencer");
+    address relayer = makeAddr("messageRelayer");
 
     // Dependency contracts
     IPermissionedContractFactory permissionedFactory;
@@ -287,7 +288,7 @@ contract L1BuildAgentTestCommon is SetupL1BuildAgent {
     }
 
     function test_OasysPortal_messageRelayer() external view {
-        assert(deployment.portal.messageRelayer() == address(0));
+        assert(deployment.portal.messageRelayer() == address(deployment.buildCfg.messageRelayer));
         assert(deployment.portalImpl.messageRelayer() == address(0));
     }
 
