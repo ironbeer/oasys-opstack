@@ -254,7 +254,7 @@ contract Build is Script {
             l2OutputOracleChallenger: l2ooChallenger,
             // ----
             messageRelayer: messageRelayer,
-
+            // ----
             finalizationPeriodSeconds: vm.envUint("FINALIZATION_PERIOD_SECONDS"),
             // ----
             proxyAdminOwner: finalSystemOwner,

@@ -162,7 +162,8 @@ contract L1BuildAgentUpgradeTest is L1BuildAgentTestCommon {
         // Deploy address manager
         AddressManager addressManager = new AddressManager();
         // Deploy proxies
-        ResolvedDelegateProxy l1CrossDomainMessengerProxy = new ResolvedDelegateProxy(addressManager, "OVM_L1CrossDomainMessenger");
+        ResolvedDelegateProxy l1CrossDomainMessengerProxy =
+            new ResolvedDelegateProxy(addressManager, "OVM_L1CrossDomainMessenger");
         L1ChugSplashProxy l1StandardBridgeProxy = new L1ChugSplashProxy(address(this));
         L1ChugSplashProxy l1ERC721BridgeProxy = new L1ChugSplashProxy(address(this));
         // Deploy implementations
@@ -174,13 +175,18 @@ contract L1BuildAgentUpgradeTest is L1BuildAgentTestCommon {
         addressManager.setAddress("Proxy__OVM_L1StandardBridge", address(l1StandardBridgeProxy));
         addressManager.setAddress("Proxy__OVM_L1ERC721Bridge", address(l1ERC721BridgeProxy));
         addressManager.setAddress("OVM_L1CrossDomainMessenger", address(l1CrossDomainMessenger));
-        addressManager.setAddress("OVM_CanonicalTransactionChain", address(l1CrossDomainMessenger)); // dummy, expected to be set zero value after build
+        addressManager.setAddress("OVM_CanonicalTransactionChain", address(l1CrossDomainMessenger)); // dummy, expected
+            // to be set zero value after build
         // Transfer ownership of the address manager to the builder
         addressManager.transferOwnership(builder);
         // Set implementations to proxies
-        l1StandardBridgeProxy.setStorage(Constants.PROXY_IMPLEMENTATION_ADDRESS, bytes32(uint256(uint160(address(legacyStandardBridge)))));
+        l1StandardBridgeProxy.setStorage(
+            Constants.PROXY_IMPLEMENTATION_ADDRESS, bytes32(uint256(uint160(address(legacyStandardBridge))))
+        );
         l1StandardBridgeProxy.setOwner(builder);
-        l1ERC721BridgeProxy.setStorage(Constants.PROXY_IMPLEMENTATION_ADDRESS, bytes32(uint256(uint160(address(legacyERC721Bridge)))));
+        l1ERC721BridgeProxy.setStorage(
+            Constants.PROXY_IMPLEMENTATION_ADDRESS, bytes32(uint256(uint160(address(legacyERC721Bridge))))
+        );
         l1ERC721BridgeProxy.setOwner(builder);
         return (
             address(addressManager),
@@ -200,20 +206,24 @@ contract L1BuildAgentUpgradeTest is L1BuildAgentTestCommon {
     function _depositTokensToBridge(address l1StandardBridgeProxy, address l1ERC721BridgeProxy) internal {
         // Deposit OAS
         depositedAmount = 1 ether;
-        MockLegacyL1StandardBridge(l1StandardBridgeProxy).depositETH{value: depositedAmount}(50000, hex"");
+        MockLegacyL1StandardBridge(l1StandardBridgeProxy).depositETH{ value: depositedAmount }(50000, hex"");
         // Deposit ERC20
         deal(address(l1ERC20), address(alice), depositedAmount);
         vm.prank(alice);
         l1ERC20.approve(l1StandardBridgeProxy, depositedAmount);
         vm.prank(alice);
-        MockLegacyL1StandardBridge(l1StandardBridgeProxy).depositERC20(address(l1ERC20), address(l2ERC20), depositedAmount, 50000, hex"");
+        MockLegacyL1StandardBridge(l1StandardBridgeProxy).depositERC20(
+            address(l1ERC20), address(l2ERC20), depositedAmount, 50000, hex""
+        );
         // Deposit ERC721
         depositedTokenId = 1243;
         l1ERC721.mint(alice, depositedTokenId);
         vm.prank(alice);
         l1ERC721.approve(l1ERC721BridgeProxy, depositedTokenId);
         vm.prank(alice);
-        MockLegacyL1ERC721Bridge(l1ERC721BridgeProxy).depositERC721(address(l1ERC721), address(l2ERC721), depositedTokenId, 50000, hex"");
+        MockLegacyL1ERC721Bridge(l1ERC721BridgeProxy).depositERC721(
+            address(l1ERC721), address(l2ERC721), depositedTokenId, 50000, hex""
+        );
     }
 
     function _transferOwnerships(address manager, address chugProxy1, address chugProxy2, address newOwner) internal {
@@ -290,11 +300,16 @@ contract L1BuildAgentUpgradeTest is L1BuildAgentTestCommon {
 
     function test_ERC20_migration_succeeds() external {
         assertEq(l1ERC20.balanceOf(address(deployment.l1ERC20Bridge)), depositedAmount);
-        assertEq(L1StandardBridge(deployment.l1ERC20Bridge).deposits(address(l1ERC20), address(l2ERC20)), depositedAmount);
+        assertEq(
+            L1StandardBridge(deployment.l1ERC20Bridge).deposits(address(l1ERC20), address(l2ERC20)), depositedAmount
+        );
     }
 
     function test_ERC721_migration_succeeds() external {
         assertEq(l1ERC721.ownerOf(depositedTokenId), address(deployment.l1ERC721Bridge));
-        assertEq(L1ERC721Bridge(deployment.l1ERC721Bridge).deposits(address(l1ERC721), address(l2ERC721), depositedTokenId), true);
+        assertEq(
+            L1ERC721Bridge(deployment.l1ERC721Bridge).deposits(address(l1ERC721), address(l2ERC721), depositedTokenId),
+            true
+        );
     }
 }

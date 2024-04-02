@@ -575,7 +575,14 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
     }
 
     /// @notice Initialize the OasysPortal
-    function _initializeOasysPortal(uint256 _chainId, BuildConfig calldata _cfg, ProxyAdmin proxyAdmin, address impl) internal {
+    function _initializeOasysPortal(
+        uint256 _chainId,
+        BuildConfig calldata _cfg,
+        ProxyAdmin proxyAdmin,
+        address impl
+    )
+        internal
+    {
         address oasysPortalProxy = builtLists[_chainId].oasysPortal;
 
         proxyAdmin.upgradeAndCall({
