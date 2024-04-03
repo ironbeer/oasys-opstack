@@ -256,6 +256,9 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
     /// @notice Check if the L2 is upgrading the existing L2
     /// @param _chainId The chainId of Verse
     function isUpgradingExistingL2(uint256 _chainId) public view returns (bool, address) {
+        if (LEGACY_L1_BUILD_AGENT == ILegacyL1BuildAgent(address(0))) {
+            return (false, address(0));
+        }
         address addressManager = LEGACY_L1_BUILD_AGENT.getAddressManager(_chainId);
         return (addressManager != address(0), addressManager);
     }

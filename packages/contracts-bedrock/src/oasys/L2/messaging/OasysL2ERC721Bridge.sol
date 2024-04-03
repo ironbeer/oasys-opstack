@@ -97,6 +97,7 @@ contract OasysL2ERC721Bridge is L2ERC721Bridge, ILegacyL2ERC721Bridge {
     )
         public
         override
+        onlyOtherBridge
     {
         if (_isOptimismMintableToken(_localToken)) {
             // Proceed with the original implementation if the local token is optimism mintable
@@ -146,6 +147,8 @@ contract OasysL2ERC721Bridge is L2ERC721Bridge, ILegacyL2ERC721Bridge {
         internal
         override
     {
+        address remoteToken;
+
         if (_isOptimismMintableToken(_localToken)) {
             // Proceed with the original implementation if the local token is optimism mintable
             super._initiateBridgeERC721(_localToken, _remoteToken, _from, _to, _tokenId, _minGasLimit, _extraData);
@@ -164,8 +167,11 @@ contract OasysL2ERC721Bridge is L2ERC721Bridge, ILegacyL2ERC721Bridge {
             // Construct calldata for l1ERC721Bridge.finalizeBridgeERC721(_to, _tokenId)
             // Legacy token references the remote token as `l1Token`
             // slither-disable-next-line reentrancy-events
-            address remoteToken = ILegacyL2StandardERC721(_localToken).l1Token();
-            require(remoteToken == _remoteToken, "L2ERC721Bridge: remote token does not match given value");
+            remoteToken = ILegacyL2StandardERC721(_localToken).l1Token();
+            // Skip the following check because the legacy interfaces (withdraw, withdrawTo) do not specify the correct
+            // remote token,
+            // resulting in failures.
+            // require(remoteToken == _remoteToken, "L2ERC721Bridge: remote token does not match given value");
 
             // When a withdrawal is initiated, we burn the withdrawer's NFT to prevent subsequent L2
             // usage
@@ -186,7 +192,7 @@ contract OasysL2ERC721Bridge is L2ERC721Bridge, ILegacyL2ERC721Bridge {
 
         // Emit Legacy event for backward compatibility
         // slither-disable-next-line reentrancy-events
-        emit WithdrawalInitiated(_remoteToken, _localToken, _from, _to, _tokenId, _extraData);
+        emit WithdrawalInitiated(remoteToken, _localToken, _from, _to, _tokenId, _extraData);
     }
 
     /// @notice Determine if the local token is an ILegacyL2StandardERC721.
