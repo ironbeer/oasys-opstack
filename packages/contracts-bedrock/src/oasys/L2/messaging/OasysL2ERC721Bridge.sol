@@ -151,7 +151,7 @@ contract OasysL2ERC721Bridge is L2ERC721Bridge, ILegacyL2ERC721Bridge {
         address remoteToken;
 
         if (_isOptimismMintableToken(_localToken)) {
-            address remoteToken = _remoteToken;
+            remoteToken = _remoteToken;
 
             // Proceed with the original implementation if the local token is optimism mintable
             super._initiateBridgeERC721(_localToken, remoteToken, _from, _to, _tokenId, _minGasLimit, _extraData);
