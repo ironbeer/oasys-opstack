@@ -11,4 +11,8 @@ interface IL1BuildDeposit {
     function deposit(address _builder) external payable;
 
     function withdraw(address _builder, uint256 _amount) external;
+
+    function getBuildBlock(address _builder) external view returns (uint256);
+
+    function isBuilderGlobally(address _builder) external view returns (bool);
 }

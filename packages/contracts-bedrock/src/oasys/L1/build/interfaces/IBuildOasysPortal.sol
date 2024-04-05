@@ -17,5 +17,6 @@ interface IBuildOasysPortal {
 
     /// @notice Return data for initializer.
     /// @param _paused Sets the contract's pausability state.
-    function initializeData(bool _paused) external pure returns (bytes memory);
+    /// @param relayer Sets the messager relayer
+    function initializeData(bool _paused, address relayer) external pure returns (bytes memory);
 }

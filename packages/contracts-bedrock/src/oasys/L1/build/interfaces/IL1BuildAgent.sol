@@ -19,6 +19,9 @@ interface IL1BuildAgent {
         // This address sign the block for p2p sync.
         // Value: depending on each verse
         address p2pSequencerAddress;
+        /// The address of messager relayer.
+        // Value: depending on each verse
+        address messageRelayer;
         // the block time of l2 chain
         // Value: 2s
         uint256 l2BlockTime;
@@ -58,41 +61,30 @@ interface IL1BuildAgent {
         address oasysPortal;
         address protocolVersions;
         address batchInbox;
-        address addressManager;
     }
 
     /// @notice Event emitted when the L1 contract set is deployed
-    event Deployed(
-        uint256 indexed chainId,
-        address owner,
-        address proxyAdmin,
-        address[7] proxys,
-        address[7] impls,
-        address batchInbox,
-        address addressManager
-    );
+    event Deployed(uint256 indexed chainId, address finalSystemOwner, BuiltAddressList results, address[7] impls);
 
     function builtLists(uint256 chainId)
         external
         view
-        returns (address, address, address, address, address, address, address, address, address, address);
+        returns (address, address, address, address, address, address, address, address, address);
 
     function chainIds(uint256 index) external view returns (uint256 chainId);
+
+    function getBuilderGlobally(uint256 chainId) external view returns (address builder);
 
     function computeInboxAddress(uint256 chainId) external view returns (address batchInbox);
 
     function isUniqueChainId(uint256 chainId) external view returns (bool);
+
+    function isUpgradingExistingL2(uint256 _chainId) external returns (bool, address);
 
     function build(
         uint256 chainId,
         BuildConfig calldata cfg
     )
         external
-        returns (
-            address proxyAdmin,
-            address[7] memory proxys,
-            address[7] memory impls,
-            address batchInbox,
-            address addressManager
-        );
+        returns (BuiltAddressList memory, address[7] memory);
 }

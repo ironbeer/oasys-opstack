@@ -46,7 +46,7 @@ contract L2ERC721Bridge is ERC721Bridge, ISemver {
         uint256 _tokenId,
         bytes calldata _extraData
     )
-        external
+        public
         virtual
         onlyOtherBridge
     {

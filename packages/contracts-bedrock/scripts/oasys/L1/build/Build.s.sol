@@ -80,6 +80,8 @@ contract Build is Script {
         address l2OutputOracleProposer;
         // L2OutputOracleChallenger is the address of the account that challenges L2 outputs.
         address l2OutputOracleChallenger;
+        // MessageRelayer is the address of message-relayer finalizer.
+        address messageRelayer;
         // FinalizationPeriodSeconds represents the number of seconds before an output is considered
         // finalized. This impacts the amount of time that withdrawals take to finalize and is
         // generally set to 1 week.
@@ -219,15 +221,11 @@ contract Build is Script {
         address l2ooChallenger = vm.envAddress("L2OO_CHALLENGER");
         address l2ooProposer = vm.envAddress("L2OO_PROPOSER");
         address batchSender = vm.envAddress("BATCH_SENDER");
+        address messageRelayer = vm.envAddress("MESSAGE_RELAYER");
         uint256 l2ChainId = vm.envUint("L2_CHAIN_ID");
         uint256 l1BlockTime = vm.envUint("L1_BLOCK_TIME");
         uint256 l2BlockTime = vm.envUint("L2_BLOCK_TIME");
         uint256 l2GasLimit = vm.envUint("L2_GAS_LIMIT");
-        uint256 finalizationPeriodSeconds = vm.envUint("FINALIZATION_PERIOD_SECONDS");
-        uint256 outputOracleSubmissionInterval = vm.envUint("OUTPUT_ORACLE_SUBMISSION_INTERVAL");
-        uint256 outputOracleStartingBlockNumber = vm.envUint("OUTPUT_ORACLE_STARTING_BLOCK_NUMBER");
-        uint256 outputOracleStartingTimestamp = vm.envUint("OUTPUT_ORACLE_STARTING_TIMESTAMP");
-        uint256 l2ZeroFeeTime = vm.envOr("ENABLE_L2_ZERO_FEE", false) ? block.timestamp : 0;
 
         // construct a deployment configuration.
         deployCfg = DeployConfig({
@@ -248,14 +246,16 @@ contract Build is Script {
             p2pSequencerAddress: p2pSequencer,
             batchSenderAddress: batchSender,
             // ----
-            l2OutputOracleSubmissionInterval: outputOracleSubmissionInterval,
-            l2OutputOracleStartingBlockNumber: outputOracleStartingBlockNumber,
-            l2OutputOracleStartingTimestamp: outputOracleStartingTimestamp,
+            l2OutputOracleSubmissionInterval: vm.envUint("OUTPUT_ORACLE_SUBMISSION_INTERVAL"),
+            l2OutputOracleStartingBlockNumber: vm.envUint("OUTPUT_ORACLE_STARTING_BLOCK_NUMBER"),
+            l2OutputOracleStartingTimestamp: vm.envUint("OUTPUT_ORACLE_STARTING_TIMESTAMP"),
             // ----
             l2OutputOracleProposer: l2ooProposer,
             l2OutputOracleChallenger: l2ooChallenger,
             // ----
-            finalizationPeriodSeconds: finalizationPeriodSeconds,
+            messageRelayer: messageRelayer,
+            // ----
+            finalizationPeriodSeconds: vm.envUint("FINALIZATION_PERIOD_SECONDS"),
             // ----
             proxyAdminOwner: finalSystemOwner,
             baseFeeVaultRecipient: finalSystemOwner,
@@ -290,7 +290,7 @@ contract Build is Script {
             requiredProtocolVersion: bytes32(0),
             recommendedProtocolVersion: bytes32(0),
             // ----
-            l2ZeroFeeTime: l2ZeroFeeTime,
+            l2ZeroFeeTime: vm.envOr("ENABLE_L2_ZERO_FEE", false) ? block.timestamp : 0,
             // set later.
             batchInboxAddress: address(0),
             l1StandardBridgeProxy: address(0),
@@ -307,6 +307,7 @@ contract Build is Script {
             l2OutputOracleChallenger: deployCfg.l2OutputOracleChallenger,
             batchSenderAddress: deployCfg.batchSenderAddress,
             p2pSequencerAddress: deployCfg.p2pSequencerAddress,
+            messageRelayer: deployCfg.messageRelayer,
             l2BlockTime: deployCfg.l2BlockTime,
             l2GasLimit: uint64(deployCfg.l2GenesisBlockGasLimit),
             l2OutputOracleSubmissionInterval: deployCfg.l2OutputOracleSubmissionInterval,
@@ -334,24 +335,22 @@ contract Build is Script {
         deposit.deposit{ value: 1 ether }(msg.sender);
 
         // build L2.
-        (address proxyAdmin, address[7] memory proxys,, address batchInbox, address addressManager) =
-            agent.build(deployCfg.l2ChainID, buildCfg);
+        (IL1BuildAgent.BuiltAddressList memory results,) = agent.build(deployCfg.l2ChainID, buildCfg);
         vm.stopBroadcast();
 
         // set deployed addresses
-        deployCfg.optimismPortalProxy = proxys[0];
-        deployCfg.systemConfigProxy = proxys[2];
-        deployCfg.l1CrossDomainMessengerProxy = proxys[3];
-        deployCfg.l1StandardBridgeProxy = proxys[4];
-        deployCfg.l1ERC721BridgeProxy = proxys[5];
-        deployCfg.batchInboxAddress = batchInbox;
-        address protocolVersions = proxys[6];
-        address l2OutputOracleProxy = proxys[1];
+        deployCfg.optimismPortalProxy = results.oasysPortal;
+        deployCfg.systemConfigProxy = results.systemConfig;
+        deployCfg.l1CrossDomainMessengerProxy = results.l1CrossDomainMessenger;
+        deployCfg.l1StandardBridgeProxy = results.l1StandardBridge;
+        deployCfg.l1ERC721BridgeProxy = results.l1ERC721Bridge;
+        deployCfg.batchInboxAddress = results.batchInbox;
 
         // output opstack configuration files.
         string memory deployCfgJson = _deployConfigJson("DeployConfig");
-        string memory addressesJson =
-            _addressesJson("deployed", proxyAdmin, l2OutputOracleProxy, addressManager, protocolVersions);
+        string memory addressesJson = _addressesJson(
+            "deployed", results.proxyAdmin, results.oasysL2OutputOracle, address(0), results.protocolVersions
+        );
 
         // output to the `./tmp/L1BuildAgent/Build/latest` directory
         _writeJson(deployCfgJson, Path.buildLatestOutDir(), "/deploy-config.json");
@@ -423,6 +422,8 @@ contract Build is Script {
 
         json.serialize("l2OutputOracleProposer", deployCfg.l2OutputOracleProposer);
         json.serialize("l2OutputOracleChallenger", deployCfg.l2OutputOracleChallenger);
+
+        json.serialize("messageRelayer", deployCfg.messageRelayer);
 
         json.serialize("finalizationPeriodSeconds", deployCfg.finalizationPeriodSeconds);
 

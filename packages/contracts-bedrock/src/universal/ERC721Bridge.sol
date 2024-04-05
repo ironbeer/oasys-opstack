@@ -4,10 +4,11 @@ pragma solidity 0.8.15;
 import { CrossDomainMessenger } from "src/universal/CrossDomainMessenger.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import { OasysERC721BridgeLegacySpacer } from "src/oasys/L1/messaging/OasysERC721BridgeLegacySpacer.sol";
 
 /// @title ERC721Bridge
 /// @notice ERC721Bridge is a base contract for the L1 and L2 ERC721 bridges.
-abstract contract ERC721Bridge {
+abstract contract ERC721Bridge is OasysERC721BridgeLegacySpacer {
     /// @notice Messenger contract on this domain. This will be removed in the
     ///         future, use `messenger` instead.
     /// @custom:legacy
@@ -18,21 +19,8 @@ abstract contract ERC721Bridge {
     /// @custom:legacy
     address public immutable OTHER_BRIDGE;
 
-    /// @custom:legacy
-    /// @custom:spacer messenger
-    /// @notice Spacer for backwards compatibility.
-    address private spacer_0_0_20;
-
-    /// @custom:legacy
-    /// @custom:spacer l1ERC721Bridge / l2ERC721Bridge
-    /// @notice Spacer for backwards compatibility.
-    address private spacer_1_0_20;
-
-    /// @notice Mapping that stores deposits for a given pair of local and remote tokens.
-    mapping(address => mapping(address => mapping(uint256 => bool))) public deposits;
-
     /// @notice Reserve extra slots (to a total of 50) in the storage layout for future upgrades.
-    uint256[47] private __gap;
+    uint256[49] private __gap;
 
     /// @notice Emitted when an ERC721 bridge to the other network is initiated.
     /// @param localToken  Address of the token on this domain.
@@ -65,17 +53,6 @@ abstract contract ERC721Bridge {
         uint256 tokenId,
         bytes extraData
     );
-
-    /// @notice  Modifier requiring sender to be EOA. This prevents against a user error that would occur
-    ///          if the sender is a smart contract wallet that has a different address on the remote chain
-    ///          (or doesn't have an address on the remote chain at all). The user would fail to receive
-    ///          the NFT if they use this function because it sends the NFT to the same address as the
-    ///          caller. This check could be bypassed by a malicious contract via initcode, but it takes
-    ///          care of the user error we want to avoid.
-    modifier onlyEOA() {
-        require(!Address.isContract(msg.sender), "ERC721Bridge: account is not externally owned");
-        _;
-    }
 
     /// @notice Ensures that the caller is a cross-chain message from the other bridge.
     modifier onlyOtherBridge() {
@@ -132,8 +109,15 @@ abstract contract ERC721Bridge {
         bytes calldata _extraData
     )
         external
-        onlyEOA
     {
+        // Modifier requiring sender to be EOA. This prevents against a user error that would occur
+        // if the sender is a smart contract wallet that has a different address on the remote chain
+        // (or doesn't have an address on the remote chain at all). The user would fail to receive
+        // the NFT if they use this function because it sends the NFT to the same address as the
+        // caller. This check could be bypassed by a malicious contract via initcode, but it takes
+        // care of the user error we want to avoid.
+        require(!Address.isContract(msg.sender), "ERC721Bridge: account is not externally owned");
+
         _initiateBridgeERC721(_localToken, _remoteToken, msg.sender, msg.sender, _tokenId, _minGasLimit, _extraData);
     }
 
