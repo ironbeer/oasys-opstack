@@ -12,7 +12,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  *      - Abolished the Allowlist
  *      - Changed `requiredAmount`, `lockedBlock` and `agentAddress` as immutable to not consume slot
  *      - Set the list of allowedTokens in the initialize function as the array is prohibited to be immutable.
- *      - Change the visibility of `getDepositTotal` public to be able to access from extension contract.
+ *      - Change the visibility of `build` and `getDepositTotal` public to be able to access from extension contract.
+ *      - Added `_setBuildBlock` function to set the build block number.
  */
 contract LegacyL1BuildDeposit {
     /**
@@ -145,7 +146,7 @@ contract LegacyL1BuildDeposit {
      * Build if the required amount of the OAS tokens is deposited.
      * @param _builder Address of the Verse-Builder.
      */
-    function build(address _builder) external {
+    function build(address _builder) public virtual {
         require(msg.sender == agentAddress, "only L1BuildAgent can call me");
         require(_depositTotal[_builder] >= requiredAmount, "deposit amount shortage");
         require(_buildBlock[_builder] == 0, "already built by builder");
@@ -205,6 +206,10 @@ contract LegacyL1BuildDeposit {
     /**
      * Internal Functions *
      */
+
+    function _setBuildBlock(address _builder, uint256 _block) internal {
+        _buildBlock[_builder] = _block;
+    }
 
     function _deposit(address _builder, address _depositer, address _token, uint256 _amount) internal {
         require(_builder != address(0), "builder is zero address");
