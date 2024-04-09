@@ -25,6 +25,7 @@ import { ILegacyL1BuildAgent } from "src/oasys/L1/build/interfaces/ILegacyL1Buil
 import { IOasysL2OutputOracleVerifier } from "src/oasys/L1/interfaces/IOasysL2OutputOracleVerifier.sol";
 import { PortalSender } from "src/oasys/L1/build/PortalSender.sol";
 import { OptimismPortal } from "src/L1/OptimismPortal.sol";
+import { L1CrossDomainMessenger } from "src/L1/L1CrossDomainMessenger.sol";
 
 /// @notice The 2nd version of L1BuildAgent
 ///         Regarding the build step, referred to the build script of Opstack
@@ -547,13 +548,26 @@ contract L1BuildAgent is IL1BuildAgent, ISemver {
                 keccak256(bytes(proxyAdmin.implementationName(l1CrossDomainMessengerProxy)))
                     == keccak256(bytes(contractName))
             );
+            // When upgrading from a Legacy, since it is already initialized,
+            // it is sufficient to just upgrade the implementation.
+            proxyAdmin.upgrade({ _proxy: payable(l1CrossDomainMessengerProxy), _implementation: impl });
+            // But just to be sure, will check to see if it's initialized.
+            try L1CrossDomainMessenger(l1CrossDomainMessengerProxy).initialize() { }
+            catch Error(string memory reason) {
+                require(
+                    keccak256(abi.encodePacked(reason)) == keccak256("Initializable: contract is already initialized"),
+                    string.concat("L1BuildAgent: unexpected error initializing L1XDM: ", reason)
+                );
+            } catch {
+                revert("L1BuildAgent: unexpected error initializing L1XDM (no reason)");
+            }
+        } else {
+            proxyAdmin.upgradeAndCall({
+                _proxy: payable(l1CrossDomainMessengerProxy),
+                _implementation: impl,
+                _data: BUILD_L1CROSS_DOMAIN_MESSENGER.initializeData()
+            });
         }
-
-        proxyAdmin.upgradeAndCall({
-            _proxy: payable(l1CrossDomainMessengerProxy),
-            _implementation: impl,
-            _data: BUILD_L1CROSS_DOMAIN_MESSENGER.initializeData()
-        });
     }
 
     /// @notice Initialize the OasysL2OutputOracle
