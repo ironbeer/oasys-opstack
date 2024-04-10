@@ -13,7 +13,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  *      - Changed `requiredAmount`, `lockedBlock` and `agentAddress` as immutable to not consume slot
  *      - Set the list of allowedTokens in the initialize function as the array is prohibited to be immutable.
  *      - Change the visibility of `build` and `getDepositTotal` public to be able to access from extension contract.
- *      - Added `_setBuildBlock` function to set the build block number.
+ *      - Chnage the visibility of `_buildBlock` to internal to be able to access from extension contract.
  */
 contract LegacyL1BuildDeposit {
     /**
@@ -34,7 +34,7 @@ contract LegacyL1BuildDeposit {
 
     mapping(address => uint256) private _depositTotal;
     mapping(address => mapping(address => mapping(address => uint256))) private _depositAmount;
-    mapping(address => uint256) private _buildBlock;
+    mapping(address => uint256) internal _buildBlock;
 
     /**
      * Events *
@@ -206,10 +206,6 @@ contract LegacyL1BuildDeposit {
     /**
      * Internal Functions *
      */
-
-    function _setBuildBlock(address _builder, uint256 _block) internal {
-        _buildBlock[_builder] = _block;
-    }
 
     function _deposit(address _builder, address _depositer, address _token, uint256 _amount) internal {
         require(_builder != address(0), "builder is zero address");

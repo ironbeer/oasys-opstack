@@ -43,7 +43,7 @@ contract L1BuildDeposit is ISemver, LegacyL1BuildDeposit {
         // require(_depositTotal[_builder] >= requiredAmount, "deposit amount shortage");
         require(getBuildBlock(_builder) == 0, "already built by builder");
 
-        _setBuildBlock(_builder, block.number);
+        _buildBlock[_builder] = block.number;
 
         emit Build(_builder, block.number);
     }
