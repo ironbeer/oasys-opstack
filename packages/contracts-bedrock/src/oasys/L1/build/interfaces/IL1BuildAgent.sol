@@ -75,11 +75,21 @@ interface IL1BuildAgent {
 
     function getBuilderGlobally(uint256 chainId) external view returns (address builder);
 
+    function getBuilderInternally(uint256 _chainId) external view returns (address);
+
     function computeInboxAddress(uint256 chainId) external view returns (address batchInbox);
 
     function isUniqueChainId(uint256 chainId) external view returns (bool);
 
     function isUpgradingExistingL2(uint256 _chainId) external returns (bool, address);
+
+    function pauseLegacyL1CrossDomainMessenger(uint256 _chainId, address addressManager) external;
+
+    function unpauseLegacyL1CrossDomainMessenger(
+        uint256 _chainId,
+        address addressManager,
+        address oldL1CrossDomainMessenger
+    ) external;
 
     function build(
         uint256 chainId,
