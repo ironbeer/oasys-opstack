@@ -14,6 +14,8 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/upgrades"
 	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
+	oplog "github.com/ethereum-optimism/optimism/op-service/log"
+
 	"github.com/ethereum-optimism/superchain-registry/superchain"
 )
 
@@ -29,7 +31,8 @@ type ChainVersionCheck struct {
 }
 
 func main() {
-	log.Root().SetHandler(log.StreamHandler(os.Stderr, log.TerminalFormat(isatty.IsTerminal(os.Stderr.Fd()))))
+	color := isatty.IsTerminal(os.Stderr.Fd())
+	oplog.SetGlobalLogHandler(log.NewTerminalHandler(os.Stderr, color))
 
 	app := &cli.App{
 		Name:  "op-version-check",
@@ -141,7 +144,7 @@ func entrypoint(ctx *cli.Context) error {
 			contracts["L2OutputOracle"] = Contract{Version: versions.L2OutputOracle, Address: addresses.L2OutputOracleProxy}
 			contracts["OptimismMintableERC20Factory"] = Contract{Version: versions.OptimismMintableERC20Factory, Address: addresses.OptimismMintableERC20FactoryProxy}
 			contracts["OptimismPortal"] = Contract{Version: versions.OptimismPortal, Address: addresses.OptimismPortalProxy}
-			contracts["SystemConfig"] = Contract{Version: versions.SystemConfig, Address: chainConfig.SystemConfigAddr}
+			contracts["SystemConfig"] = Contract{Version: versions.SystemConfig, Address: addresses.SystemConfigProxy}
 			contracts["ProxyAdmin"] = Contract{Version: "null", Address: addresses.ProxyAdmin}
 
 			output = append(output, ChainVersionCheck{Name: chainConfig.Name, ChainID: l2ChainID, Contracts: contracts})
@@ -152,7 +155,7 @@ func entrypoint(ctx *cli.Context) error {
 	}
 	// Write contract versions to disk or stdout
 	if outfile := ctx.Path("outfile"); outfile != "" {
-		if err := jsonutil.WriteJSON(outfile, output); err != nil {
+		if err := jsonutil.WriteJSON(outfile, output, 0o666); err != nil {
 			return err
 		}
 	} else {

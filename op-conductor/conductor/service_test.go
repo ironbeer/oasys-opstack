@@ -66,6 +66,7 @@ func mockConfig(t *testing.T) Config {
 			ChannelTimeout:          300,
 			L1ChainID:               big.NewInt(1),
 			L2ChainID:               big.NewInt(2),
+			RegolithTime:            &now,
 			CanyonTime:              &now,
 			BatchInboxAddress:       [20]byte{1, 2},
 			DepositContractAddress:  [20]byte{2, 3},
@@ -99,7 +100,7 @@ type OpConductorTestSuite struct {
 
 func (s *OpConductorTestSuite) SetupSuite() {
 	s.ctx = context.Background()
-	s.log = testlog.Logger(s.T(), log.LvlDebug)
+	s.log = testlog.Logger(s.T(), log.LevelDebug)
 	s.cfg = mockConfig(s.T())
 	s.version = "v0.0.1"
 	s.next = make(chan struct{}, 1)

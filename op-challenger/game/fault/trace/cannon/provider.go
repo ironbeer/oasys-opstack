@@ -9,9 +9,11 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/ethereum-optimism/optimism/op-challenger/config"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
+	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
 	"github.com/ethereum-optimism/optimism/op-service/ioutil"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -44,11 +46,12 @@ type ProofGenerator interface {
 }
 
 type CannonTraceProvider struct {
-	logger    log.Logger
-	dir       string
-	prestate  string
-	generator ProofGenerator
-	gameDepth types.Depth
+	logger         log.Logger
+	dir            string
+	prestate       string
+	generator      ProofGenerator
+	gameDepth      types.Depth
+	preimageLoader *preimageLoader
 
 	// lastStep stores the last step in the actual trace if known. 0 indicates unknown.
 	// Cached as an optimisation to avoid repeatedly attempting to execute beyond the end of the trace.
@@ -57,11 +60,12 @@ type CannonTraceProvider struct {
 
 func NewTraceProvider(logger log.Logger, m CannonMetricer, cfg *config.Config, localInputs LocalGameInputs, dir string, gameDepth types.Depth) *CannonTraceProvider {
 	return &CannonTraceProvider{
-		logger:    logger,
-		dir:       dir,
-		prestate:  cfg.CannonAbsolutePreState,
-		generator: NewExecutor(logger, m, cfg, localInputs),
-		gameDepth: gameDepth,
+		logger:         logger,
+		dir:            dir,
+		prestate:       cfg.CannonAbsolutePreState,
+		generator:      NewExecutor(logger, m, cfg, localInputs),
+		gameDepth:      gameDepth,
+		preimageLoader: newPreimageLoader(kvstore.NewDiskKV(preimageDir(dir)).Get),
 	}
 }
 
@@ -103,9 +107,9 @@ func (p *CannonTraceProvider) GetStepData(ctx context.Context, pos types.Positio
 	if data == nil {
 		return nil, nil, nil, errors.New("proof missing proof data")
 	}
-	var oracleData *types.PreimageOracleData
-	if len(proof.OracleKey) > 0 {
-		oracleData = types.NewPreimageOracleData(proof.OracleKey, proof.OracleValue, proof.OracleOffset)
+	oracleData, err := p.preimageLoader.LoadPreimage(proof)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to load preimage: %w", err)
 	}
 	return value, data, oracleData, nil
 }
@@ -247,39 +251,64 @@ type CannonTraceProviderForTest struct {
 	*CannonTraceProvider
 }
 
+type preimageOpts []string
+
+type PreimageOpt func() preimageOpts
+
+func FirstPreimageLoadOfType(preimageType string) PreimageOpt {
+	return func() preimageOpts {
+		return []string{"--stop-at-preimage-type", preimageType}
+	}
+}
+
+func FirstKeccakPreimageLoad() PreimageOpt {
+	return FirstPreimageLoadOfType("keccak")
+}
+
+func FirstKZGPointEvaluationPreimageLoad() PreimageOpt {
+	return FirstPreimageLoadOfType("kzg-point-evaluation")
+}
+
+func PreimageLargerThan(size int) PreimageOpt {
+	return func() preimageOpts {
+		return []string{"--stop-at-preimage-larger-than", strconv.Itoa(size)}
+	}
+}
+
 func NewTraceProviderForTest(logger log.Logger, m CannonMetricer, cfg *config.Config, localInputs LocalGameInputs, dir string, gameDepth types.Depth) *CannonTraceProviderForTest {
 	p := &CannonTraceProvider{
-		logger:    logger,
-		dir:       dir,
-		prestate:  cfg.CannonAbsolutePreState,
-		generator: NewExecutor(logger, m, cfg, localInputs),
-		gameDepth: gameDepth,
+		logger:         logger,
+		dir:            dir,
+		prestate:       cfg.CannonAbsolutePreState,
+		generator:      NewExecutor(logger, m, cfg, localInputs),
+		gameDepth:      gameDepth,
+		preimageLoader: newPreimageLoader(kvstore.NewDiskKV(preimageDir(dir)).Get),
 	}
 	return &CannonTraceProviderForTest{p}
 }
 
-func (p *CannonTraceProviderForTest) FindStepReferencingPreimage(ctx context.Context, start uint64) (uint64, error) {
+func (p *CannonTraceProviderForTest) FindStep(ctx context.Context, start uint64, preimage PreimageOpt) (uint64, common.Hash, error) {
 	// First generate a snapshot of the starting state, so we can snap to it later for the full trace search
 	prestateProof, err := p.loadProof(ctx, start)
 	if err != nil {
-		return 0, err
+		return 0, common.Hash{}, err
 	}
 	start += 1
 	for {
-		if err := p.generator.(*Executor).generateProofOrUntilPreimageRead(ctx, p.dir, start, math.MaxUint64, true); err != nil {
-			return 0, fmt.Errorf("generate cannon trace (until preimage read) with proof at %d: %w", start, err)
+		if err := p.generator.(*Executor).generateProof(ctx, p.dir, start, math.MaxUint64, preimage()...); err != nil {
+			return 0, common.Hash{}, fmt.Errorf("generate cannon trace (until preimage read) with proof at %d: %w", start, err)
 		}
 		state, err := p.finalState()
 		if err != nil {
-			return 0, err
+			return 0, common.Hash{}, err
 		}
 		if state.Exited {
 			break
 		}
 		if state.PreimageOffset != 0 && state.PreimageOffset != prestateProof.OracleOffset {
-			return state.Step - 1, nil
+			return state.Step - 1, state.PreimageKey, nil
 		}
 		start = state.Step
 	}
-	return 0, io.EOF
+	return 0, common.Hash{}, io.EOF
 }

@@ -12,7 +12,7 @@ import { SafeProxyFactory } from "safe-contracts/proxies/SafeProxyFactory.sol";
 import { Enum as SafeOps } from "safe-contracts/common/Enum.sol";
 
 import { Deployer } from "scripts/Deployer.sol";
-import { DeployConfig } from "scripts/DeployConfig.s.sol";
+import "scripts/DeployConfig.s.sol";
 
 import { ProxyAdmin } from "src/universal/ProxyAdmin.sol";
 import { AddressManager } from "src/legacy/AddressManager.sol";
@@ -20,6 +20,7 @@ import { Proxy } from "src/universal/Proxy.sol";
 import { L1StandardBridge } from "src/L1/L1StandardBridge.sol";
 import { StandardBridge } from "src/universal/StandardBridge.sol";
 import { OptimismPortal } from "src/L1/OptimismPortal.sol";
+import { OptimismPortal2 } from "src/L1/OptimismPortal2.sol";
 import { L1ChugSplashProxy } from "src/legacy/L1ChugSplashProxy.sol";
 import { ResolvedDelegateProxy } from "src/legacy/ResolvedDelegateProxy.sol";
 import { L1CrossDomainMessenger } from "src/L1/L1CrossDomainMessenger.sol";
@@ -31,6 +32,7 @@ import { ResourceMetering } from "src/L1/ResourceMetering.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { DisputeGameFactory } from "src/dispute/DisputeGameFactory.sol";
 import { FaultDisputeGame } from "src/dispute/FaultDisputeGame.sol";
+import { PermissionedDisputeGame } from "src/dispute/PermissionedDisputeGame.sol";
 import { PreimageOracle } from "src/cannon/PreimageOracle.sol";
 import { MIPS } from "src/cannon/MIPS.sol";
 import { L1ERC721Bridge } from "src/L1/L1ERC721Bridge.sol";
@@ -123,13 +125,15 @@ contract Deploy is Deployer {
     }
 
     /// @notice Returns the proxy addresses. If a proxy is not found, it will have address(0).
-    function _proxies() private view returns (Types.ContractSet memory proxies_) {
+    function _proxies() internal view returns (Types.ContractSet memory proxies_) {
         proxies_ = Types.ContractSet({
             L1CrossDomainMessenger: mustGetAddress("L1CrossDomainMessengerProxy"),
             L1StandardBridge: mustGetAddress("L1StandardBridgeProxy"),
             L2OutputOracle: mustGetAddress("L2OutputOracleProxy"),
+            DisputeGameFactory: mustGetAddress("DisputeGameFactoryProxy"),
             OptimismMintableERC20Factory: mustGetAddress("OptimismMintableERC20FactoryProxy"),
             OptimismPortal: mustGetAddress("OptimismPortalProxy"),
+            OptimismPortal2: mustGetAddress("OptimismPortalProxy"),
             SystemConfig: mustGetAddress("SystemConfigProxy"),
             L1ERC721Bridge: mustGetAddress("L1ERC721BridgeProxy"),
             ProtocolVersions: mustGetAddress("ProtocolVersionsProxy"),
@@ -138,13 +142,15 @@ contract Deploy is Deployer {
     }
 
     /// @notice Returns the proxy addresses, not reverting if any are unset.
-    function _proxiesUnstrict() private view returns (Types.ContractSet memory proxies_) {
+    function _proxiesUnstrict() internal view returns (Types.ContractSet memory proxies_) {
         proxies_ = Types.ContractSet({
             L1CrossDomainMessenger: getAddress("L1CrossDomainMessengerProxy"),
             L1StandardBridge: getAddress("L1StandardBridgeProxy"),
             L2OutputOracle: getAddress("L2OutputOracleProxy"),
+            DisputeGameFactory: getAddress("DisputeGameFactoryProxy"),
             OptimismMintableERC20Factory: getAddress("OptimismMintableERC20FactoryProxy"),
             OptimismPortal: getAddress("OptimismPortalProxy"),
+            OptimismPortal2: getAddress("OptimismPortalProxy"),
             SystemConfig: getAddress("SystemConfigProxy"),
             L1ERC721Bridge: getAddress("L1ERC721BridgeProxy"),
             ProtocolVersions: getAddress("ProtocolVersionsProxy"),
@@ -158,7 +164,7 @@ contract Deploy is Deployer {
 
     /// @notice Gets the address of the SafeProxyFactory and Safe singleton for use in deploying a new GnosisSafe.
     function _getSafeFactory() internal returns (SafeProxyFactory safeProxyFactory_, Safe safeSingleton_) {
-        // These are they standard create2 deployed contracts. First we'll check if they are deployed,
+        // These are the standard create2 deployed contracts. First we'll check if they are deployed,
         // if not we'll deploy new ones, though not at these addresses.
         address safeProxyFactory = 0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2;
         address safeSingleton = 0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552;
@@ -233,11 +239,19 @@ contract Deploy is Deployer {
     function setUp() public virtual override {
         super.setUp();
 
+        // Load the `useFaultProofs` slot value prior to etching the DeployConfig's bytecode and reading the deploy
+        // config file. If this slot has already been set, it will override the preference in the deploy config.
+        bytes32 useFaultProofsOverride = vm.load(address(cfg), USE_FAULT_PROOFS_SLOT);
+
         string memory path = string.concat(vm.projectRoot(), "/deploy-config/", deploymentContext, ".json");
         vm.etch(address(cfg), vm.getDeployedCode("DeployConfig.s.sol:DeployConfig"));
         vm.label(address(cfg), "DeployConfig");
         vm.allowCheatcodes(address(cfg));
         cfg.read(path);
+
+        if (useFaultProofsOverride != 0) {
+            vm.store(address(cfg), USE_FAULT_PROOFS_SLOT, useFaultProofsOverride);
+        }
 
         console.log("Deploying from %s", deployScript);
         console.log("Deployment context: %s", deploymentContext);
@@ -315,6 +329,7 @@ contract Deploy is Deployer {
 
         setAlphabetFaultGameImplementation({ _allowUpgrade: false });
         setCannonFaultGameImplementation({ _allowUpgrade: false });
+        setPermissionedCannonFaultGameImplementation({ _allowUpgrade: false });
 
         transferDisputeGameFactoryOwnership();
     }
@@ -324,13 +339,17 @@ contract Deploy is Deployer {
         console.log("Deploying proxies");
 
         deployERC1967Proxy("OptimismPortalProxy");
-        deployERC1967Proxy("L2OutputOracleProxy");
         deployERC1967Proxy("SystemConfigProxy");
         deployL1StandardBridgeProxy();
         deployL1CrossDomainMessengerProxy();
         deployERC1967Proxy("OptimismMintableERC20FactoryProxy");
         deployERC1967Proxy("L1ERC721BridgeProxy");
+
+        // Both the DisputeGameFactory and L2OutputOracle proxies are deployed regardles of whether FPAC is enabled
+        // to prevent a nastier refactor to the deploy scripts. In the future, the L2OutputOracle will be removed. If
+        // fault proofs are not enabled, the DisputeGameFactory proxy will be unused.
         deployERC1967Proxy("DisputeGameFactoryProxy");
+        deployERC1967Proxy("L2OutputOracleProxy");
 
         transferAddressManagerOwnership(); // to the ProxyAdmin
     }
@@ -338,13 +357,16 @@ contract Deploy is Deployer {
     /// @notice Deploy all of the implementations
     function deployImplementations() public {
         console.log("Deploying implementations");
-        deployOptimismPortal();
         deployL1CrossDomainMessenger();
-        deployL2OutputOracle();
         deployOptimismMintableERC20Factory();
         deploySystemConfig();
         deployL1StandardBridge();
         deployL1ERC721Bridge();
+        deployOptimismPortal();
+        deployL2OutputOracle();
+
+        // Fault proofs
+        deployOptimismPortal2();
         deployDisputeGameFactory();
         deployPreimageOracle();
         deployMips();
@@ -353,14 +375,23 @@ contract Deploy is Deployer {
     /// @notice Initialize all of the implementations
     function initializeImplementations() public {
         console.log("Initializing implementations");
-        initializeDisputeGameFactory();
         initializeSystemConfig();
         initializeL1StandardBridge();
         initializeL1ERC721Bridge();
         initializeOptimismMintableERC20Factory();
         initializeL1CrossDomainMessenger();
         initializeL2OutputOracle();
-        initializeOptimismPortal();
+        initializeDisputeGameFactory();
+
+        // Selectively initialize either the original OptimismPortal or the new OptimismPortal2. Since this will upgrade
+        // the proxy, we cannot initialize both. FPAC warning can be removed once we're done with the old OptimismPortal
+        // contract.
+        if (cfg.useFaultProofs()) {
+            console.log("WARNING: FPAC is enabled. Initializing the OptimismPortal proxy with the OptimismPortal2.");
+            initializeOptimismPortal2();
+        } else {
+            initializeOptimismPortal();
+        }
     }
 
     ////////////////////////////////////////////////////////////////
@@ -513,8 +544,6 @@ contract Deploy is Deployer {
         contracts.L1CrossDomainMessenger = address(messenger);
         ChainAssertions.checkL1CrossDomainMessenger({ _contracts: contracts, _vm: vm, _isProxy: false });
 
-        require(loadInitializedSlot("L1CrossDomainMessenger") == 1, "L1CrossDomainMessenger is not initialized");
-
         addr_ = address(messenger);
     }
 
@@ -534,7 +563,33 @@ contract Deploy is Deployer {
         contracts.OptimismPortal = address(portal);
         ChainAssertions.checkOptimismPortal({ _contracts: contracts, _cfg: cfg, _isProxy: false });
 
-        require(loadInitializedSlot("OptimismPortal") == 1, "OptimismPortal is not initialized");
+        addr_ = address(portal);
+    }
+
+    /// @notice Deploy the OptimismPortal2
+    function deployOptimismPortal2() public broadcast returns (address addr_) {
+        console.log("Deploying OptimismPortal2 implementation");
+
+        // Could also verify this inside DeployConfig but doing it here is a bit more reliable.
+        require(
+            uint32(cfg.respectedGameType()) == cfg.respectedGameType(), "Deploy: respectedGameType must fit into uint32"
+        );
+
+        OptimismPortal2 portal = new OptimismPortal2{ salt: _implSalt() }({
+            _proofMaturityDelaySeconds: cfg.proofMaturityDelaySeconds(),
+            _disputeGameFinalityDelaySeconds: cfg.disputeGameFinalityDelaySeconds(),
+            _initialRespectedGameType: GameType.wrap(uint32(cfg.respectedGameType()))
+        });
+
+        save("OptimismPortal2", address(portal));
+        console.log("OptimismPortal2 deployed at %s", address(portal));
+
+        // Override the `OptimismPortal2` contract to the deployed implementation. This is necessary
+        // to check the `OptimismPortal2` implementation alongside dependent contracts, which
+        // are always proxies.
+        Types.ContractSet memory contracts = _proxiesUnstrict();
+        contracts.OptimismPortal2 = address(portal);
+        ChainAssertions.checkOptimismPortal2({ _contracts: contracts, _cfg: cfg, _isProxy: false });
 
         addr_ = address(portal);
     }
@@ -559,8 +614,6 @@ contract Deploy is Deployer {
             _isProxy: false
         });
 
-        require(loadInitializedSlot("L2OutputOracle") == 1, "L2OutputOracle is not initialized");
-
         addr_ = address(oracle);
     }
 
@@ -583,11 +636,17 @@ contract Deploy is Deployer {
     }
 
     /// @notice Deploy the DisputeGameFactory
-    function deployDisputeGameFactory() public onlyTestnetOrDevnet broadcast returns (address addr_) {
+    function deployDisputeGameFactory() public broadcast returns (address addr_) {
         console.log("Deploying DisputeGameFactory implementation");
         DisputeGameFactory factory = new DisputeGameFactory{ salt: _implSalt() }();
         save("DisputeGameFactory", address(factory));
         console.log("DisputeGameFactory deployed at %s", address(factory));
+
+        // Override the `DisputeGameFactory` contract to the deployed implementation. This is necessary to check the
+        // `DisputeGameFactory` implementation alongside dependent contracts, which are always proxies.
+        Types.ContractSet memory contracts = _proxiesUnstrict();
+        contracts.DisputeGameFactory = address(factory);
+        ChainAssertions.checkDisputeGameFactory({ _contracts: contracts, _expectedOwner: address(0) });
 
         addr_ = address(factory);
     }
@@ -606,17 +665,16 @@ contract Deploy is Deployer {
         contracts.ProtocolVersions = address(versions);
         ChainAssertions.checkProtocolVersions({ _contracts: contracts, _cfg: cfg, _isProxy: false });
 
-        require(loadInitializedSlot("ProtocolVersions") == 1, "ProtocolVersions is not initialized");
-
         addr_ = address(versions);
     }
 
     /// @notice Deploy the PreimageOracle
-    function deployPreimageOracle() public onlyTestnetOrDevnet broadcast returns (address addr_) {
+    function deployPreimageOracle() public broadcast returns (address addr_) {
         console.log("Deploying PreimageOracle implementation");
         PreimageOracle preimageOracle = new PreimageOracle{ salt: _implSalt() }({
             _minProposalSize: cfg.preimageOracleMinProposalSize(),
-            _challengePeriod: cfg.preimageOracleChallengePeriod()
+            _challengePeriod: cfg.preimageOracleChallengePeriod(),
+            _cancunActivation: cfg.preimageOracleCancunActivationTimestamp()
         });
         save("PreimageOracle", address(preimageOracle));
         console.log("PreimageOracle deployed at %s", address(preimageOracle));
@@ -625,7 +683,7 @@ contract Deploy is Deployer {
     }
 
     /// @notice Deploy Mips
-    function deployMips() public onlyTestnetOrDevnet broadcast returns (address addr_) {
+    function deployMips() public broadcast returns (address addr_) {
         console.log("Deploying Mips implementation");
         MIPS mips = new MIPS{ salt: _implSalt() }(IPreimageOracle(mustGetAddress("PreimageOracle")));
         save("Mips", address(mips));
@@ -648,8 +706,6 @@ contract Deploy is Deployer {
         Types.ContractSet memory contracts = _proxiesUnstrict();
         contracts.SystemConfig = address(config);
         ChainAssertions.checkSystemConfig({ _contracts: contracts, _cfg: cfg, _isProxy: false });
-
-        require(loadInitializedSlot("SystemConfig") == 1, "SystemConfig is not initialized");
 
         addr_ = address(config);
     }
@@ -724,7 +780,7 @@ contract Deploy is Deployer {
     }
 
     /// @notice Initialize the DisputeGameFactory
-    function initializeDisputeGameFactory() public onlyTestnetOrDevnet broadcast {
+    function initializeDisputeGameFactory() public broadcast {
         console.log("Upgrading and initializing DisputeGameFactory proxy");
         address disputeGameFactoryProxy = mustGetAddress("DisputeGameFactoryProxy");
         address disputeGameFactory = mustGetAddress("DisputeGameFactory");
@@ -737,6 +793,8 @@ contract Deploy is Deployer {
 
         string memory version = DisputeGameFactory(disputeGameFactoryProxy).version();
         console.log("DisputeGameFactory version: %s", version);
+
+        ChainAssertions.checkDisputeGameFactory({ _contracts: _proxiesUnstrict(), _expectedOwner: msg.sender });
     }
 
     /// @notice Initialize the SystemConfig
@@ -778,8 +836,6 @@ contract Deploy is Deployer {
         console.log("SystemConfig version: %s", version);
 
         ChainAssertions.checkSystemConfig({ _contracts: _proxies(), _cfg: cfg, _isProxy: true });
-
-        require(loadInitializedSlot("SystemConfigProxy") == 1, "SystemConfigProxy is not initialized");
     }
 
     /// @notice Initialize the L1StandardBridge
@@ -904,10 +960,6 @@ contract Deploy is Deployer {
         console.log("L1CrossDomainMessenger version: %s", version);
 
         ChainAssertions.checkL1CrossDomainMessenger({ _contracts: _proxies(), _vm: vm, _isProxy: true });
-
-        require(
-            loadInitializedSlot("L1CrossDomainMessengerProxy") == 1, "L1CrossDomainMessengerProxy is not initialized"
-        );
     }
 
     /// @notice Initialize the L2OutputOracle
@@ -943,8 +995,6 @@ contract Deploy is Deployer {
             _l2OutputOracleStartingTimestamp: cfg.l2OutputOracleStartingTimestamp(),
             _isProxy: true
         });
-
-        require(loadInitializedSlot("L2OutputOracleProxy") == 1, "L2OutputOracleProxy is not initialized");
     }
 
     /// @notice Initialize the OptimismPortal
@@ -974,8 +1024,35 @@ contract Deploy is Deployer {
         console.log("OptimismPortal version: %s", version);
 
         ChainAssertions.checkOptimismPortal({ _contracts: _proxies(), _cfg: cfg, _isProxy: true });
+    }
 
-        require(loadInitializedSlot("OptimismPortalProxy") == 1, "OptimismPortalProxy is not initialized");
+    /// @notice Initialize the OptimismPortal2
+    function initializeOptimismPortal2() public broadcast {
+        console.log("Upgrading and initializing OptimismPortal2 proxy");
+        address optimismPortalProxy = mustGetAddress("OptimismPortalProxy");
+        address optimismPortal2 = mustGetAddress("OptimismPortal2");
+        address disputeGameFactoryProxy = mustGetAddress("DisputeGameFactoryProxy");
+        address systemConfigProxy = mustGetAddress("SystemConfigProxy");
+        address superchainConfigProxy = mustGetAddress("SuperchainConfigProxy");
+
+        _upgradeAndCallViaSafe({
+            _proxy: payable(optimismPortalProxy),
+            _implementation: optimismPortal2,
+            _innerCallData: abi.encodeCall(
+                OptimismPortal2.initialize,
+                (
+                    DisputeGameFactory(disputeGameFactoryProxy),
+                    SystemConfig(systemConfigProxy),
+                    SuperchainConfig(superchainConfigProxy)
+                )
+                )
+        });
+
+        OptimismPortal2 portal = OptimismPortal2(payable(optimismPortalProxy));
+        string memory version = portal.version();
+        console.log("OptimismPortal2 version: %s", version);
+
+        ChainAssertions.checkOptimismPortal2({ _contracts: _proxies(), _cfg: cfg, _isProxy: true });
     }
 
     function initializeProtocolVersions() public broadcast {
@@ -1005,12 +1082,10 @@ contract Deploy is Deployer {
         console.log("ProtocolVersions version: %s", version);
 
         ChainAssertions.checkProtocolVersions({ _contracts: _proxiesUnstrict(), _cfg: cfg, _isProxy: true });
-
-        require(loadInitializedSlot("ProtocolVersionsProxy") == 1, "ProtocolVersionsProxy is not initialized");
     }
 
     /// @notice Transfer ownership of the DisputeGameFactory contract to the final system owner
-    function transferDisputeGameFactoryOwnership() public onlyTestnetOrDevnet broadcast {
+    function transferDisputeGameFactoryOwnership() public broadcast {
         console.log("Transferring DisputeGameFactory ownership to Safe");
         DisputeGameFactory disputeGameFactory = DisputeGameFactory(mustGetAddress("DisputeGameFactoryProxy"));
         address owner = disputeGameFactory.owner();
@@ -1020,6 +1095,7 @@ contract Deploy is Deployer {
             disputeGameFactory.transferOwnership(safe);
             console.log("DisputeGameFactory ownership transferred to Safe at: %s", safe);
         }
+        ChainAssertions.checkDisputeGameFactory({ _contracts: _proxies(), _expectedOwner: safe });
     }
 
     /// @notice Loads the mips absolute prestate from the prestate-proof for devnets otherwise
@@ -1049,8 +1125,8 @@ contract Deploy is Deployer {
         }
     }
 
-    /// @notice Sets the implementation for the `FAULT` game type in the `DisputeGameFactory`
-    function setCannonFaultGameImplementation(bool _allowUpgrade) public onlyTestnetOrDevnet broadcast {
+    /// @notice Sets the implementation for the `CANNON` game type in the `DisputeGameFactory`
+    function setCannonFaultGameImplementation(bool _allowUpgrade) public broadcast {
         console.log("Setting Cannon FaultDisputeGame implementation");
         DisputeGameFactory factory = DisputeGameFactory(mustGetAddress("DisputeGameFactoryProxy"));
 
@@ -1058,6 +1134,22 @@ contract Deploy is Deployer {
         _setFaultGameImplementation({
             _factory: factory,
             _gameType: GameTypes.CANNON,
+            _absolutePrestate: loadMipsAbsolutePrestate(),
+            _faultVm: IBigStepper(mustGetAddress("Mips")),
+            _maxGameDepth: cfg.faultGameMaxDepth(),
+            _allowUpgrade: _allowUpgrade
+        });
+    }
+
+    /// @notice Sets the implementation for the `PERMISSIONED_CANNON` game type in the `DisputeGameFactory`
+    function setPermissionedCannonFaultGameImplementation(bool _allowUpgrade) public broadcast {
+        console.log("Setting Cannon PermissionedDisputeGame implementation");
+        DisputeGameFactory factory = DisputeGameFactory(mustGetAddress("DisputeGameFactoryProxy"));
+
+        // Set the Cannon FaultDisputeGame implementation in the factory.
+        _setFaultGameImplementation({
+            _factory: factory,
+            _gameType: GameTypes.PERMISSIONED_CANNON,
             _absolutePrestate: loadMipsAbsolutePrestate(),
             _faultVm: IBigStepper(mustGetAddress("Mips")),
             _maxGameDepth: cfg.faultGameMaxDepth(),
@@ -1075,7 +1167,7 @@ contract Deploy is Deployer {
             _factory: factory,
             _gameType: GameTypes.ALPHABET,
             _absolutePrestate: outputAbsolutePrestate,
-            _faultVm: IBigStepper(new AlphabetVM(outputAbsolutePrestate)),
+            _faultVm: IBigStepper(new AlphabetVM(outputAbsolutePrestate, PreimageOracle(mustGetAddress("PreimageOracle")))),
             // The max depth for the alphabet trace is always 3. Add 1 because split depth is fully inclusive.
             _maxGameDepth: cfg.faultGameSplitDepth() + 3 + 1,
             _allowUpgrade: _allowUpgrade
@@ -1101,25 +1193,45 @@ contract Deploy is Deployer {
             return;
         }
 
-        _factory.setImplementation(
-            _gameType,
-            new FaultDisputeGame({
-                _gameType: _gameType,
-                _absolutePrestate: _absolutePrestate,
-                _genesisBlockNumber: cfg.faultGameGenesisBlock(),
-                _genesisOutputRoot: Hash.wrap(cfg.faultGameGenesisOutputRoot()),
-                _maxGameDepth: _maxGameDepth,
-                _splitDepth: cfg.faultGameSplitDepth(),
-                _gameDuration: Duration.wrap(uint64(cfg.faultGameMaxDuration())),
-                _vm: _faultVm
-            })
-        );
-
         uint32 rawGameType = GameType.unwrap(_gameType);
+        if (rawGameType != GameTypes.PERMISSIONED_CANNON.raw()) {
+            _factory.setImplementation(
+                _gameType,
+                new FaultDisputeGame({
+                    _gameType: _gameType,
+                    _absolutePrestate: _absolutePrestate,
+                    _genesisBlockNumber: cfg.faultGameGenesisBlock(),
+                    _genesisOutputRoot: Hash.wrap(cfg.faultGameGenesisOutputRoot()),
+                    _maxGameDepth: _maxGameDepth,
+                    _splitDepth: cfg.faultGameSplitDepth(),
+                    _gameDuration: Duration.wrap(uint64(cfg.faultGameMaxDuration())),
+                    _vm: _faultVm
+                })
+            );
+        } else {
+            _factory.setImplementation(
+                _gameType,
+                new PermissionedDisputeGame({
+                    _gameType: _gameType,
+                    _absolutePrestate: _absolutePrestate,
+                    _genesisBlockNumber: cfg.faultGameGenesisBlock(),
+                    _genesisOutputRoot: Hash.wrap(cfg.faultGameGenesisOutputRoot()),
+                    _maxGameDepth: _maxGameDepth,
+                    _splitDepth: cfg.faultGameSplitDepth(),
+                    _gameDuration: Duration.wrap(uint64(cfg.faultGameMaxDuration())),
+                    _vm: _faultVm,
+                    _proposer: cfg.l2OutputOracleProposer(),
+                    _challenger: cfg.l2OutputOracleChallenger()
+                })
+            );
+        }
+
         string memory gameTypeString;
-        if (rawGameType == GameType.unwrap(GameTypes.CANNON)) {
+        if (rawGameType == GameTypes.CANNON.raw()) {
             gameTypeString = "Cannon";
-        } else if (rawGameType == GameType.unwrap(GameTypes.ALPHABET)) {
+        } else if (rawGameType == GameTypes.PERMISSIONED_CANNON.raw()) {
+            gameTypeString = "PermissionedCannon";
+        } else if (rawGameType == GameTypes.ALPHABET.raw()) {
             gameTypeString = "Alphabet";
         } else {
             gameTypeString = "Unknown";
