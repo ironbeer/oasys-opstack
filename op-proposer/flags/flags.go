@@ -74,9 +74,16 @@ var (
 	}
 	ActiveSequencerCheckDurationFlag = &cli.DurationFlag{
 		Name:    "active-sequencer-check-duration",
-		Usage:   "The duration between checks to determine the active sequencer endpoint. ",
+		Usage:   "The duration between checks to determine the active sequencer endpoint.",
 		Value:   2 * time.Minute,
 		EnvVars: prefixEnvVars("ACTIVE_SEQUENCER_CHECK_DURATION"),
+	}
+	WaitNodeSyncFlag = &cli.BoolFlag{
+		Name: "wait-node-sync",
+		Usage: "Indicates if, during startup, the proposer should wait for the rollup node to sync to " +
+			"the current L1 tip before proceeding with its driver loop.",
+		Value:   false,
+		EnvVars: prefixEnvVars("WAIT_NODE_SYNC"),
 	}
 	// Legacy Flags
 	L2OutputHDPathFlag = txmgr.L2OutputHDPathFlag
@@ -97,6 +104,7 @@ var optionalFlags = []cli.Flag{
 	ProposalIntervalFlag,
 	DisputeGameTypeFlag,
 	ActiveSequencerCheckDurationFlag,
+	WaitNodeSyncFlag,
 }
 
 func init() {
