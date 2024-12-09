@@ -7,7 +7,7 @@ import { stdJson } from "forge-std/StdJson.sol";
 import { IL1BuildAgent } from "src/oasys/L1/build/interfaces/IL1BuildAgent.sol";
 import { IL1BuildDeposit } from "src/oasys/L1/build/interfaces/IL1BuildDeposit.sol";
 import { OasysPortal } from "src/oasys/L1/messaging/OasysPortal.sol";
-import { Executables } from "scripts/Executables.sol";
+import { Executables } from "scripts/libraries/Executables.sol";
 import { Path } from "./_path.sol";
 
 contract Build is Script {
