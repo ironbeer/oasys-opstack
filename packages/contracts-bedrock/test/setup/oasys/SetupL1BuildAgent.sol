@@ -260,18 +260,18 @@ contract L1BuildAgentTestCommon is SetupL1BuildAgent {
     }
 
     function test_OasysPortal_L2_ORACLE() external view {
-        assert(address(deployment.portal.L2_ORACLE()) == address(deployment.l2Oracle));
-        assert(address(deployment.portalImpl.L2_ORACLE()) == address(deployment.l2Oracle));
+        assert(address(deployment.portal.l2Oracle()) == address(deployment.l2Oracle));
+        assert(address(deployment.portalImpl.l2Oracle()) == address(deployment.l2Oracle));
     }
 
     function test_OasysPortal_SYSTEM_CONFIG() external view {
-        assert(address(deployment.portal.SYSTEM_CONFIG()) == address(deployment.systemConfig));
-        assert(address(deployment.portalImpl.SYSTEM_CONFIG()) == address(deployment.systemConfig));
+        assert(address(deployment.portal.systemConfig()) == address(deployment.systemConfig));
+        assert(address(deployment.portalImpl.systemConfig()) == address(deployment.systemConfig));
     }
 
     function test_OasysPortal_GUARDIAN() external view {
-        assert(address(deployment.portal.GUARDIAN()) == deployment.buildCfg.finalSystemOwner);
-        assert(address(deployment.portalImpl.GUARDIAN()) == deployment.buildCfg.finalSystemOwner);
+        assert(address(deployment.portal.guardian()) == deployment.buildCfg.finalSystemOwner);
+        assert(address(deployment.portalImpl.guardian()) == deployment.buildCfg.finalSystemOwner);
     }
 
     function test_OasysPortal_l2Sender() external view {
@@ -398,8 +398,8 @@ contract L1BuildAgentTestCommon is SetupL1BuildAgent {
     }
 
     function test_L1CrossDomainMessenger_OTHER_MESSENGER() external view {
-        assert(deployment.l1Messenger.OTHER_MESSENGER() == 0x4200000000000000000000000000000000000007);
-        assert(deployment.l1MessengerImpl.OTHER_MESSENGER() == 0x4200000000000000000000000000000000000007);
+        assert(address(deployment.l1Messenger.OTHER_MESSENGER()) == 0x4200000000000000000000000000000000000007);
+        assert(address(deployment.l1MessengerImpl.OTHER_MESSENGER()) == 0x4200000000000000000000000000000000000007);
     }
 
     function test_L1CrossDomainMessenger_PORTAL() external view {

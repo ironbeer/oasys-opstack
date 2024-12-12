@@ -19,7 +19,7 @@ import { BuildProtocolVersions } from "src/oasys/L1/build/BuildProtocolVersions.
 import { IL1BuildAgent } from "src/oasys/L1/build/interfaces/IL1BuildAgent.sol";
 import { IL1BuildDeposit } from "src/oasys/L1/build/interfaces/IL1BuildDeposit.sol";
 import { IPermissionedContractFactory } from "src/oasys/L1/interfaces/IPermissionedContractFactory.sol";
-import { Executables } from "scripts/Executables.sol";
+import { Executables } from "scripts/libraries/Executables.sol";
 import { Path } from "./_path.sol";
 
 contract Deploy is Script {
