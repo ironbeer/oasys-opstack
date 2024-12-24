@@ -9,11 +9,6 @@ import { ILegacyL1ERC721Bridge } from "src/oasys/L1/interfaces/ILegacyL1ERC721Br
 /// @notice The OasysL1ERC721Bridge is a contract that adds compatibility with
 ///         the legacy L1ERC721Bridge implemented by Oasys to the official Optimism L1ERC721Bridge.
 contract OasysL1ERC721Bridge is L1ERC721Bridge, ILegacyL1ERC721Bridge {
-    /// @notice Constructs the OasysL1ERC721Bridge contract.
-    /// @param _messenger   Address of the CrossDomainMessenger on this network.
-    /// @param _otherBridge Address of the ERC721 bridge on the other network.
-    constructor(address _messenger, address _otherBridge) L1ERC721Bridge(_messenger, _otherBridge) { }
-
     /// @custom:legacy
     /// @inheritdoc ILegacyL1ERC721Bridge
     function l2ERC721Bridge() external view returns (address) {
