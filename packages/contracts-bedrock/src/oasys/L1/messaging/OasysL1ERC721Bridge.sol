@@ -2,13 +2,35 @@
 pragma solidity 0.8.15;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { ERC721Bridge } from "src/universal/ERC721Bridge.sol";
 import { L1ERC721Bridge } from "src/L1/L1ERC721Bridge.sol";
+import { CrossDomainMessenger } from "src/universal/CrossDomainMessenger.sol";
+import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
 import { ILegacyL1ERC721Bridge } from "src/oasys/L1/interfaces/ILegacyL1ERC721Bridge.sol";
+import { L2PredeployAddresses } from "src/oasys/L2/L2PredeployAddresses.sol";
 
 /// @title OasysL1ERC721Bridge
 /// @notice The OasysL1ERC721Bridge is a contract that adds compatibility with
 ///         the legacy L1ERC721Bridge implemented by Oasys to the official Optimism L1ERC721Bridge.
 contract OasysL1ERC721Bridge is L1ERC721Bridge, ILegacyL1ERC721Bridge {
+    /// @notice Initializes the contract.
+    /// @param _messenger   Contract of the CrossDomainMessenger on this network.
+    /// @param _superchainConfig Contract of the SuperchainConfig contract on this network.
+    function initialize(
+        CrossDomainMessenger _messenger,
+        SuperchainConfig _superchainConfig
+    )
+        public
+        override
+        initializer
+    {
+        superchainConfig = _superchainConfig;
+        __ERC721Bridge_init({
+            _messenger: _messenger,
+            _otherBridge: ERC721Bridge(payable(L2PredeployAddresses.L2_ERC721_BRIDGE))
+        });
+    }
+
     /// @custom:legacy
     /// @inheritdoc ILegacyL1ERC721Bridge
     function l2ERC721Bridge() external view returns (address) {

@@ -9,8 +9,8 @@ import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC16
 import { ISemver } from "src/universal/ISemver.sol";
 import { IL1BuildAgent } from "src/oasys/L1/build/interfaces/IL1BuildAgent.sol";
 import { IOasysL2OutputOracleVerifier } from "src/oasys/L1/interfaces/IOasysL2OutputOracleVerifier.sol";
-import { IL1UpgradeManager } from "src/oasys/L1/upgrade/IL1UpgradeManager.sol";
-import { IL1UpgradeImplementer } from "src/oasys/L1/upgrade/IL1UpgradeImplementer.sol";
+import { IUpgradeManager } from "src/oasys/L1/upgrade/IUpgradeManager.sol";
+import { IUpgradeImplementer } from "src/oasys/L1/upgrade/IUpgradeImplementer.sol";
 
 // New version implementations
 import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
@@ -20,7 +20,6 @@ import { SystemConfig } from "src/L1/SystemConfig.sol";
 import { L1CrossDomainMessenger } from "src/L1/L1CrossDomainMessenger.sol";
 import { L1StandardBridge } from "src/L1/L1StandardBridge.sol";
 import { OasysL1ERC721Bridge } from "src/oasys/L1/messaging/OasysL1ERC721Bridge.sol";
-import { ProtocolVersions, ProtocolVersion } from "src/L1/ProtocolVersions.sol";
 
 // Dependencies
 import { Constants } from "src/libraries/Constants.sol";
@@ -72,18 +71,11 @@ interface IPrevSystemConfig {
     function resourceConfig() external view returns (ResourceConfig calldata);
 }
 
-/// @notice Interface for ProtocolVersions v1.0.0
-/// https://github.com/oasysgames/oasys-opstack/blob/v1.1.0/packages/contracts-bedrock/src/L1/ProtocolVersions.sol
-interface IPrevProtocolVersions {
-    function owner() external view returns (address);
-    function required() external view returns (ProtocolVersion);
-    function recommended() external view returns (ProtocolVersion);
-}
+/// @title BedrockToGranite
+/// @notice An implementation contract for upgrading the network from Bedrock to Granite.
+contract BedrockToGranite is IERC165, ISemver, IUpgradeImplementer {
+    event SuperchainConfigProxyDeployed(uint256 indexed chainId, address proxy);
 
-/// @custom:proxied
-/// @title L1BedrockToGranite
-/// @dev This contract is intended to be proxied
-contract L1BedrockToGranite is IERC165, ISemver, IL1UpgradeImplementer {
     /// @notice Stores proxy addresses for L1 contracts
     struct Proxies {
         address superchainConfig;
@@ -93,7 +85,6 @@ contract L1BedrockToGranite is IERC165, ISemver, IL1UpgradeImplementer {
         address l1CrossDomainMessenger;
         address l1StandardBridge;
         address l1ERC721Bridge;
-        address protocolVersions;
     }
 
     /// @notice New implementation addresses
@@ -105,10 +96,18 @@ contract L1BedrockToGranite is IERC165, ISemver, IL1UpgradeImplementer {
     address public immutable L1_CROSS_DOMAIN_MESSENGER;
     address public immutable L1_STANDARD_BRIDGE;
     address public immutable L1_ERC721_BRIDGE;
-    address public immutable PROTOCOL_VERSIONS;
 
     /// @notice Mapping of chain IDs to their proxy addresses
     mapping(uint256 => Proxies) public proxies;
+
+    /// @notice Check if the caller supports the IUpgradeManager interface
+    modifier onlyUpgradeManager() {
+        require(
+            ERC165Checker.supportsInterface(msg.sender, type(IUpgradeManager).interfaceId),
+            "BedrockToGranite: caller is not L1UpgradeManager"
+        );
+        _;
+    }
 
     /// @notice Initializes the implementer
     constructor(
@@ -118,9 +117,37 @@ contract L1BedrockToGranite is IERC165, ISemver, IL1UpgradeImplementer {
         address _systemConfig,
         address _l1CrossDomainMessenger,
         address _l1StandardBridge,
-        address _l1ERC721Bridge,
-        address _protocolVersions
+        address _l1ERC721Bridge
     ) {
+        require(
+            _superchainConfig.codehash == 0xcb9fc87911d60025ea59380a275f6ecda28b4c35a143e6ad3fa2d75a1381a993,
+            "BedrockToGranite: SuperchainConfig(1.1.0) is required"
+        );
+        require(
+            _optimismPortal.codehash == 0x0664468275b0ff0c79a50cc5d828591ec94ea051d601c4ec8b8a595e72603c4f,
+            "BedrockToGranite: OasysPortal(2.8.1-beta.1) is required"
+        );
+        require(
+            _l2OutputOracle.codehash == 0xc62cead15355b12f0efd1869bf7c4685877e18817768f62b75082123902d5c5b,
+            "BedrockToGranite: OasysL2OutputOracle(1.8.0) is required"
+        );
+        require(
+            _systemConfig.codehash == 0x8c672f4944f469636dd22b76442db3da758ce33101f6964790874d7b37540b37,
+            "BedrockToGranite: SystemConfig(2.3.0-beta.2) is required"
+        );
+        require(
+            _l1CrossDomainMessenger.codehash == 0x04b23d5ed3ef270f9dbeb363c84554f747a35e2c82ba055ec069e0e061312727,
+            "BedrockToGranite: L1CrossDomainMessenger(2.4.0) is required"
+        );
+        require(
+            _l1StandardBridge.codehash == 0x1c880dfa5d493789a5c4ee7a25828525b9f8f300406ab64ba68cd6b13ff907ca,
+            "BedrockToGranite: L1StandardBridge(2.2.0) is required"
+        );
+        require(
+            _l1ERC721Bridge.codehash == 0x675963058044ba28778c3c67fa61348699773784fafb90202694f7994687e938,
+            "BedrockToGranite: L1ERC721Bridge(2.1.1+beta.1) is required"
+        );
+
         SUPERCHAIN_CONFIG = _superchainConfig;
         OPTIMISM_PORTAL = _optimismPortal;
         L2_OUTPUT_ORACLE = _l2OutputOracle;
@@ -128,34 +155,31 @@ contract L1BedrockToGranite is IERC165, ISemver, IL1UpgradeImplementer {
         L1_CROSS_DOMAIN_MESSENGER = _l1CrossDomainMessenger;
         L1_STANDARD_BRIDGE = _l1StandardBridge;
         L1_ERC721_BRIDGE = _l1ERC721Bridge;
-        PROTOCOL_VERSIONS = _protocolVersions;
     }
 
     /// @notice Semantic version.
     /// @custom:semver 1.0.0
-    function version() public pure virtual returns (string memory) {
-        return "1.0.0";
-    }
+    string public constant version = "1.0.0";
+
+    /// @inheritdoc IUpgradeImplementer
+    uint256 public constant implementerIndex = 0;
+
+    /// @inheritdoc IUpgradeImplementer
+    string public constant upgradeName = "Granite";
+
+    /// @inheritdoc IUpgradeImplementer
+    uint256 public constant totalSteps = 1;
 
     /// @notice Checks if the contract supports an interface.
     ///         Expected to be called from manager contracts
     /// @param _interfaceId Interface identifier to check
     function supportsInterface(bytes4 _interfaceId) public pure override(IERC165) returns (bool) {
-        return _interfaceId == type(IL1UpgradeImplementer).interfaceId || _interfaceId == type(IERC165).interfaceId;
+        return _interfaceId == type(IUpgradeImplementer).interfaceId || _interfaceId == type(IERC165).interfaceId;
     }
 
-    /// @inheritdoc IL1UpgradeImplementer
-    function getOriginalProxyAdminOwner(uint256 _chainId) external view returns (address) {
-        return SystemConfig(proxies[_chainId].systemConfig).owner();
-    }
-
-    /// @inheritdoc IL1UpgradeImplementer
-    function execute(uint256 _chainId, uint8 _nextStep) external returns (bool completed) {
-        require(
-            ERC165Checker.supportsInterface(msg.sender, type(IL1UpgradeManager).interfaceId),
-            "L1BedrockToGranite: caller is not L1UpgradeManager"
-        );
-        require(_nextStep == 0, "L1BedrockToGranite: nextStep must be 0");
+    /// @inheritdoc IUpgradeImplementer
+    function executeUpgradeStep(uint256 _chainId, uint8 _step) external onlyUpgradeManager returns (bool _completed) {
+        require(_step == 1, "BedrockToGranite: step must be 1");
 
         _initialize(_chainId);
         _deploySuperchainConfigProxy(_chainId);
@@ -166,7 +190,6 @@ contract L1BedrockToGranite is IERC165, ISemver, IL1UpgradeImplementer {
         _upgradeL1CrossDomainMessenger(_chainId);
         _upgradeL1StandardBridge(_chainId);
         _upgradeL1ERC721Bridge(_chainId);
-        _upgradeProtocolVersions(_chainId);
         return true;
     }
 
@@ -181,7 +204,7 @@ contract L1BedrockToGranite is IERC165, ISemver, IL1UpgradeImplementer {
             address _l1CrossDomainMessenger,
             address _l2OutputOracle,
             address _optimismPortal,
-            address _protocolVersions,
+            ,
         ) = _buildAgent().builtLists(_chainId);
 
         _checkVersion("SystemConfig", _systemConfig, "1.11.0");
@@ -190,7 +213,6 @@ contract L1BedrockToGranite is IERC165, ISemver, IL1UpgradeImplementer {
         _checkVersion("L1CrossDomainMessenger", _l1CrossDomainMessenger, "1.8.0");
         _checkVersion("L2OutputOracle", _l2OutputOracle, "1.7.0");
         _checkVersion("OptimismPortal", _optimismPortal, "1.11.0");
-        _checkVersion("ProtocolVersions", _protocolVersions, "1.0.0");
 
         proxies[_chainId] = Proxies({
             superchainConfig: address(0),
@@ -199,16 +221,17 @@ contract L1BedrockToGranite is IERC165, ISemver, IL1UpgradeImplementer {
             systemConfig: _systemConfig,
             l1CrossDomainMessenger: _l1CrossDomainMessenger,
             l1StandardBridge: _l1StandardBridge,
-            l1ERC721Bridge: _l1ERC721Bridge,
-            protocolVersions: _protocolVersions
+            l1ERC721Bridge: _l1ERC721Bridge
         });
     }
 
     /// @notice Deploys a new SuperchainConfig proxy contract
     /// @param _chainId Chain identifier
     function _deploySuperchainConfigProxy(uint256 _chainId) internal {
-        Proxy proxy = new Proxy({ _admin: address(_manager().proxyAdmin(_chainId)) });
-        proxies[_chainId].superchainConfig = address(proxy);
+        Proxy _proxy = new Proxy({ _admin: address(_manager().proxyAdmin(_chainId)) });
+        proxies[_chainId].superchainConfig = address(_proxy);
+
+        emit SuperchainConfigProxyDeployed(_chainId, address(_proxy));
     }
 
     /// @notice Upgrades SuperchainConfig implementation
@@ -248,7 +271,7 @@ contract L1BedrockToGranite is IERC165, ISemver, IL1UpgradeImplementer {
                     prev.messageRelayer()
                 )
             ),
-            _storageUpdate: IL1UpgradeManager.StorageUpdate({
+            _storageUpdate: IUpgradeManager.StorageUpdate({
                 slot: bytes32(0),
                 currentValue: bytes32(uint256(1)),
                 newValue: bytes32(0)
@@ -278,7 +301,7 @@ contract L1BedrockToGranite is IERC165, ISemver, IL1UpgradeImplementer {
                     prev.VERIFIER()
                 )
             ),
-            _storageUpdate: IL1UpgradeManager.StorageUpdate({
+            _storageUpdate: IUpgradeManager.StorageUpdate({
                 slot: bytes32(0),
                 currentValue: bytes32(uint256(1)),
                 newValue: bytes32(0)
@@ -316,7 +339,7 @@ contract L1BedrockToGranite is IERC165, ISemver, IL1UpgradeImplementer {
                     addrs
                 )
             ),
-            _storageUpdate: IL1UpgradeManager.StorageUpdate({
+            _storageUpdate: IUpgradeManager.StorageUpdate({
                 slot: bytes32(0),
                 currentValue: bytes32(uint256(1)),
                 newValue: bytes32(0)
@@ -374,7 +397,7 @@ contract L1BedrockToGranite is IERC165, ISemver, IL1UpgradeImplementer {
                     SystemConfig(proxies[_chainId].systemConfig)
                 )
             ),
-            _storageUpdate: IL1UpgradeManager.StorageUpdate({
+            _storageUpdate: IUpgradeManager.StorageUpdate({
                 slot: bytes32(0),
                 // Pack `spacer_0_0_20(address)+_initialized(uint8)` with right alignment
                 currentValue: bytes32(uint256(1) << 8 * 20 | uint160(addressManager)),
@@ -406,7 +429,7 @@ contract L1BedrockToGranite is IERC165, ISemver, IL1UpgradeImplementer {
                 _proxy: proxies[_chainId].l1StandardBridge,
                 _implementation: L1_STANDARD_BRIDGE,
                 _data: data,
-                _storageUpdate: IL1UpgradeManager.StorageUpdate({
+                _storageUpdate: IUpgradeManager.StorageUpdate({
                     slot: bytes32(0),
                     // Pack `_initialized(uint8)+_initializing(bool)+spacer_0_2_30(bytes30)` with right alignment
                     currentValue: bytes32(uint256(uint160(proxies[_chainId].l1CrossDomainMessenger))),
@@ -442,28 +465,10 @@ contract L1BedrockToGranite is IERC165, ISemver, IL1UpgradeImplementer {
         });
     }
 
-    /// @notice Upgrades ProtocolVersions implementation with re-initialization
-    /// @param _chainId Chain identifier
-    function _upgradeProtocolVersions(uint256 _chainId) internal {
-        IPrevProtocolVersions prev = IPrevProtocolVersions(proxies[_chainId].protocolVersions);
-
-        _manager().upgradeAndCall({
-            _chainId: _chainId,
-            _proxy: proxies[_chainId].protocolVersions,
-            _implementation: PROTOCOL_VERSIONS,
-            _data: abi.encodeCall(ProtocolVersions.initialize, (prev.owner(), prev.required(), prev.recommended())),
-            _storageUpdate: IL1UpgradeManager.StorageUpdate({
-                slot: bytes32(0),
-                currentValue: bytes32(uint256(1)),
-                newValue: bytes32(0)
-            })
-        });
-    }
-
     /// @notice Returns the upgrade manager contract that called this contract
-    /// @return IL1UpgradeManager interface of the caller
-    function _manager() internal view returns (IL1UpgradeManager) {
-        return IL1UpgradeManager(msg.sender);
+    /// @return IUpgradeManager interface of the caller
+    function _manager() internal view returns (IUpgradeManager) {
+        return IUpgradeManager(msg.sender);
     }
 
     /// @notice Returns the build agent contract through the upgrade manager
@@ -489,7 +494,7 @@ contract L1BedrockToGranite is IERC165, ISemver, IL1UpgradeImplementer {
         require(
             keccak256(bytes(actualVersion)) == keccak256(bytes(_expectVersion)),
             string.concat(
-                "L1BedrockToGranite: ",
+                "BedrockToGranite: ",
                 _contractName,
                 " is unexpected version(actual=",
                 actualVersion,

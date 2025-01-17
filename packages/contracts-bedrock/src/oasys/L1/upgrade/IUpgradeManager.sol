@@ -5,9 +5,9 @@ import { IL1BuildAgent } from "src/oasys/L1/build/interfaces/IL1BuildAgent.sol";
 import { ProxyAdmin } from "src/universal/ProxyAdmin.sol";
 import { StorageSetter } from "src/universal/StorageSetter.sol";
 
-/// @title IL1UpgradeManager
+/// @title IUpgradeManager
 /// @notice Interface for managing L2 upgrades across multiple versions
-interface IL1UpgradeManager {
+interface IUpgradeManager {
     /// @notice Parameters for updating specific storage slot values
     struct StorageUpdate {
         bytes32 slot; // Target storage slot

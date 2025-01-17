@@ -41,7 +41,14 @@ contract L1ERC721Bridge is ERC721Bridge, ISemver {
     /// @notice Initializes the contract.
     /// @param _messenger   Contract of the CrossDomainMessenger on this network.
     /// @param _superchainConfig Contract of the SuperchainConfig contract on this network.
-    function initialize(CrossDomainMessenger _messenger, SuperchainConfig _superchainConfig) public initializer {
+    function initialize(
+        CrossDomainMessenger _messenger,
+        SuperchainConfig _superchainConfig
+    )
+        public
+        virtual
+        initializer
+    {
         superchainConfig = _superchainConfig;
         __ERC721Bridge_init({ _messenger: _messenger, _otherBridge: ERC721Bridge(payable(Predeploys.L2_ERC721_BRIDGE)) });
     }
