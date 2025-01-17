@@ -196,6 +196,7 @@ contract BedrockToGranite is IERC165, ISemver, IUpgradeImplementer {
     /// @dev Initializes the upgrade process by loading and validating current contract versions
     /// @param _chainId Chain identifier
     function _initialize(uint256 _chainId) internal {
+        // slither-disable-next-line unused-return
         (
             ,
             address _systemConfig,
@@ -317,6 +318,7 @@ contract BedrockToGranite is IERC165, ISemver, IUpgradeImplementer {
         (ResourceMetering.ResourceConfig memory cfg, SystemConfig.Addresses memory addrs) =
             _systemConfigInitializeParams(_chainId);
 
+        // slither-disable-next-line unused-return
         (,,,,,,,, address batchInbox) = _buildAgent().builtLists(_chainId);
 
         _manager().upgradeAndCall({
@@ -418,6 +420,7 @@ contract BedrockToGranite is IERC165, ISemver, IUpgradeImplementer {
             )
         );
 
+        // slither-disable-next-line unused-return
         (bool hasV0,) = _buildAgent().isUpgradingExistingL2(_chainId);
         if (hasV0) {
             // When upgrading from v0:

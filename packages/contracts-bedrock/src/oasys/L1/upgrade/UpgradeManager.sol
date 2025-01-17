@@ -125,6 +125,7 @@ contract UpgradeManager is IERC165, ISemver, IUpgradeManager, Ownable {
     /// @notice Validates that the chain ID corresponds to a registered chain
     /// @param _chainId The chain ID to validate
     modifier validChainId(uint256 _chainId) {
+        // slither-disable-next-line unused-return
         (address _proxyAdmin,,,,,,,,) = buildAgent.builtLists(_chainId);
         require(_proxyAdmin != address(0), "UpgradeManager: invalid chain-id");
         _;
@@ -231,7 +232,9 @@ contract UpgradeManager is IERC165, ISemver, IUpgradeManager, Ownable {
         emit UpgradeStepAdvanced(_chainId, implementer.upgradeName(), status.step, implementer.totalSteps());
 
         if (_completed) {
+            // slither-disable-next-line reentrancy-no-eth
             status.implementerIndex += 1;
+            // slither-disable-next-line reentrancy-no-eth
             status.step = 0;
             _releaseProxyAdminOwner(_chainId);
 
@@ -241,6 +244,7 @@ contract UpgradeManager is IERC165, ISemver, IUpgradeManager, Ownable {
 
     /// @inheritdoc IUpgradeManager
     function proxyAdmin(uint256 _chainId) public view returns (ProxyAdmin) {
+        // slither-disable-next-line unused-return
         (address _proxyAdmin,,,,,,,,) = buildAgent.builtLists(_chainId);
         return ProxyAdmin(_proxyAdmin);
     }
@@ -332,8 +336,9 @@ contract UpgradeManager is IERC165, ISemver, IUpgradeManager, Ownable {
         require(_proxyAdmin.owner() == address(this), "UpgradeManager: has no ownership");
 
         address _owner = proxyAdminOwners[_chainId];
-        _proxyAdmin.transferOwnership(_owner);
         proxyAdminOwners[_chainId] = address(0);
+
+        _proxyAdmin.transferOwnership(_owner);
 
         emit ProxyAdminOwnerReleased(_chainId, _owner);
     }
