@@ -2,11 +2,13 @@
 pragma solidity 0.8.15;
 
 import { CrossDomainMessenger } from "src/universal/CrossDomainMessenger.sol";
+import { StandardBridge } from "src/universal/StandardBridge.sol";
 import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import { OasysERC721BridgeLegacySpacer } from "src/oasys/L1/messaging/OasysERC721BridgeLegacySpacer.sol";
 
+/// @custom:oasys Pulled from commit e6ef3a900c42c8722e72c2e2314027f85d12ced5(tag: op-contracts/v1.3.0)
 /// @title ERC721Bridge
 /// @notice ERC721Bridge is a base contract for the L1 and L2 ERC721 bridges.
 abstract contract ERC721Bridge is OasysERC721BridgeLegacySpacer, Initializable {
@@ -20,7 +22,7 @@ abstract contract ERC721Bridge is OasysERC721BridgeLegacySpacer, Initializable {
 
     /// @notice Contract of the bridge on the other network.
     /// @custom:network-specific
-    ERC721Bridge public otherBridge;
+    StandardBridge public otherBridge;
 
     /// @notice Reserve extra slots (to a total of 50) in the storage layout for future upgrades.
     uint256[46] private __gap;
@@ -69,9 +71,10 @@ abstract contract ERC721Bridge is OasysERC721BridgeLegacySpacer, Initializable {
     /// @notice Initializer.
     /// @param _messenger   Contract of the CrossDomainMessenger on this network.
     /// @param _otherBridge Contract of the ERC721 bridge on the other network.
+    // solhint-disable-next-line func-name-mixedcase
     function __ERC721Bridge_init(
         CrossDomainMessenger _messenger,
-        ERC721Bridge _otherBridge
+        StandardBridge _otherBridge
     )
         internal
         onlyInitializing
@@ -92,7 +95,7 @@ abstract contract ERC721Bridge is OasysERC721BridgeLegacySpacer, Initializable {
     ///         Public getter is legacy and will be removed in the future. Use `otherBridge` instead.
     /// @return Contract of the bridge on the other network.
     /// @custom:legacy
-    function OTHER_BRIDGE() external view returns (ERC721Bridge) {
+    function OTHER_BRIDGE() external view returns (StandardBridge) {
         return otherBridge;
     }
 

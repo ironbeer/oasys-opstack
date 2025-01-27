@@ -11,6 +11,7 @@ import { StandardBridge } from "src/universal/StandardBridge.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
 
+/// @custom:oasys Pulled from commit e6ef3a900c42c8722e72c2e2314027f85d12ced5(tag: op-contracts/v1.3.0)
 /// @title L1ERC721Bridge
 /// @notice The L1 ERC721 bridge is a contract which works together with the L2 ERC721 bridge to
 ///         make it possible to transfer ERC721 tokens from Ethereum to Optimism. This contract
@@ -30,8 +31,8 @@ contract L1ERC721Bridge is ERC721Bridge, ISemver {
     SuperchainConfig public superchainConfig;
 
     /// @notice Semantic version.
-    /// @custom:semver 2.1.1+beta.1
-    string public constant version = "2.1.1+beta.1";
+    /// @custom:semver 2.1.0
+    string public constant version = "2.1.0";
 
     /// @notice Constructs the L1ERC721Bridge contract.
     constructor() ERC721Bridge() {
@@ -50,7 +51,10 @@ contract L1ERC721Bridge is ERC721Bridge, ISemver {
         initializer
     {
         superchainConfig = _superchainConfig;
-        __ERC721Bridge_init({ _messenger: _messenger, _otherBridge: ERC721Bridge(payable(Predeploys.L2_ERC721_BRIDGE)) });
+        __ERC721Bridge_init({
+            _messenger: _messenger,
+            _otherBridge: StandardBridge(payable(Predeploys.L2_ERC721_BRIDGE))
+        });
     }
 
     /// @inheritdoc ERC721Bridge

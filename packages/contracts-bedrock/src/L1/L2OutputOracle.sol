@@ -7,6 +7,7 @@ import { Types } from "src/libraries/Types.sol";
 import { Constants } from "src/libraries/Constants.sol";
 
 /// @custom:proxied
+/// @custom:oasys Pulled from commit e6ef3a900c42c8722e72c2e2314027f85d12ced5(tag: op-contracts/v1.3.0)
 /// @title L2OutputOracle
 /// @notice The L2OutputOracle contains an array of L2 state outputs, where each output is a
 ///         commitment to the state of the L2 chain. Other contracts like the OptimismPortal use
@@ -157,6 +158,7 @@ contract L2OutputOracle is Initializable, ISemver {
     ///         the given output index. Only the challenger address can delete outputs.
     /// @param _l2OutputIndex Index of the first L2 output to be deleted.
     ///                       All outputs after this output will also be deleted.
+    // solhint-disable-next-line ordering
     function deleteL2Outputs(uint256 _l2OutputIndex) external virtual {
         require(msg.sender == challenger, "L2OutputOracle: only the challenger address can delete outputs");
 

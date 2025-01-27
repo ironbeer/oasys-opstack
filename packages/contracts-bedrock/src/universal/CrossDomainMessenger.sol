@@ -8,6 +8,7 @@ import { Encoding } from "src/libraries/Encoding.sol";
 import { Constants } from "src/libraries/Constants.sol";
 
 /// @custom:legacy
+/// @custom:oasys Pulled from commit e6ef3a900c42c8722e72c2e2314027f85d12ced5(tag: op-contracts/v1.3.0)
 /// @title CrossDomainMessengerLegacySpacer0
 /// @notice Contract only exists to add a spacer to the CrossDomainMessenger where the
 ///         libAddressManager variable used to exist. Must be the first contract in the inheritance
@@ -174,10 +175,6 @@ abstract contract CrossDomainMessenger is
     /// @param _message     Message to trigger the target address with.
     /// @param _minGasLimit Minimum gas limit that the message can be executed with.
     function sendMessage(address _target, bytes calldata _message, uint32 _minGasLimit) external payable {
-        if (isCustomGasToken()) {
-            require(msg.value == 0, "CrossDomainMessenger: cannot send value with custom gas token");
-        }
-
         // Triggers a message to the other messenger. Note that the amount of gas provided to the
         // message is the amount of gas requested by the user PLUS the base gas value. We want to
         // guarantee the property that the call to the target contract will always have at least
@@ -362,17 +359,9 @@ abstract contract CrossDomainMessenger is
         + RELAY_GAS_CHECK_BUFFER;
     }
 
-    /// @notice Returns the address of the gas token and the token's decimals.
-    function gasPayingToken() internal view virtual returns (address, uint8);
-
-    /// @notice Returns whether the chain uses a custom gas token or not.
-    function isCustomGasToken() internal view returns (bool) {
-        (address token,) = gasPayingToken();
-        return token != Constants.ETHER;
-    }
-
     /// @notice Initializer.
     /// @param _otherMessenger CrossDomainMessenger contract on the other chain.
+    // solhint-disable-next-line func-name-mixedcase
     function __CrossDomainMessenger_init(CrossDomainMessenger _otherMessenger) internal onlyInitializing {
         // We only want to set the xDomainMsgSender to the default value if it hasn't been initialized yet,
         // meaning that this is a fresh contract deployment.
